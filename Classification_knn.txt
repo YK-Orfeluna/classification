@@ -1,0 +1,6 @@
+Classification_knn
+Best Score: 0.966666666667
+Best Param: {'n_neighbors': 3, 'weights': 'uniform'}
+Each-Param: ({'n_neighbors': 1, 'weights': 'uniform'}, {'n_neighbors': 1, 'weights': 'distance'}, {'n_neighbors': 2, 'weights': 'uniform'}, {'n_neighbors': 2, 'weights': 'distance'}, {'n_neighbors': 3, 'weights': 'uniform'}, {'n_neighbors': 3, 'weights': 'distance'})
+Each Mean-Score: [ 0.96        0.96        0.94666667  0.96        0.96666667  0.96666667]
+Each Std-Score: [ 0.08537499  0.08537499  0.09092121  0.08537499  0.06666667  0.06666667]

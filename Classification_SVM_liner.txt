@@ -1,0 +1,6 @@
+Classification_SVM_liner
+Best Score: 0.973333333333
+Best Param: {'kernel': 'linear', 'C': 1}
+Each-Param: ({'kernel': 'linear', 'C': 1}, {'kernel': 'linear', 'C': 2}, {'kernel': 'linear', 'C': 3})
+Each Mean-Score: [ 0.97333333  0.97333333  0.97333333]
+Each Std-Score: [ 0.05120764  0.05120764  0.05120764]

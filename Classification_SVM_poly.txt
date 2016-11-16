@@ -1,0 +1,8 @@
+Classification_SVM_poly
+Best Score: 0.986666666667
+Best Param: {'kernel': 'poly', 'C': 2, 'degree': 1}
+Each-Param: ({'kernel': 'poly', 'C': 1, 'degree': 1}, {'kernel': 'poly', 'C': 1, 'degree': 2}, {'kernel': 'poly', 'C': 1, 'degree': 3}, {'kernel': 'poly', 'C': 2, 'degree': 1}, {'kernel': 'poly', 'C': 2, 'degree': 2}, {'kernel': 'poly', 'C': 2, 'degree': 3}, {'kernel': 'poly', 'C': 3, 'degree': 1}, {'kernel': 'poly', 'C': 3, 'degree': 2}, {'kernel': 'poly', 'C': 3, 'degree': 3})
+Each Mean-Score: [ 0.97333333  0.98        0.98        0.98666667  0.97333333  0.97333333
+  0.98666667  0.96666667  0.96666667]
+Each Std-Score: [ 0.05120764  0.04682513  0.06917503  0.04091545  0.07221367  0.07221367
+  0.04091545  0.08388705  0.0745356 ]

@@ -1,0 +1,8 @@
+Classification_SVM_rbf
+Best Score: 0.973333333333
+Best Param: {'kernel': 'rbf', 'C': 1, 'gamma': 1}
+Each-Param: ({'kernel': 'rbf', 'C': 1, 'gamma': 1}, {'kernel': 'rbf', 'C': 1, 'gamma': 2}, {'kernel': 'rbf', 'C': 1, 'gamma': 3}, {'kernel': 'rbf', 'C': 2, 'gamma': 1}, {'kernel': 'rbf', 'C': 2, 'gamma': 2}, {'kernel': 'rbf', 'C': 2, 'gamma': 3}, {'kernel': 'rbf', 'C': 3, 'gamma': 1}, {'kernel': 'rbf', 'C': 3, 'gamma': 2}, {'kernel': 'rbf', 'C': 3, 'gamma': 3})
+Each Mean-Score: [ 0.97333333  0.96666667  0.96        0.96666667  0.96666667  0.96
+  0.96666667  0.95333333  0.94666667]
+Each Std-Score: [ 0.05120764  0.05443311  0.07118052  0.05443311  0.06666667  0.07118052
+  0.05443311  0.08632411  0.08886111]
