@@ -57,9 +57,6 @@ elif FLAG == "cross" :
 		x_train = data[:,:row1-1]
 		y_train = data[:,row1-1:]
 
-exit()
-
-
 argvs = sys.argv								# コマンドライン引数を取得する
 if len(argvs) == 3 :							# 引数の数が適切な時（3）
 	filename = argvs[1] + ".csv"				# 1番目の引数をcsvファイルの名前として取り扱う（ただし".csv"は入力不要）
