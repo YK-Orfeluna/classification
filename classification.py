@@ -5,6 +5,61 @@ import numpy as np
 from sklearn import datasets, neighbors, svm
 from sklearn.model_selection import GridSearchCV
 
+CSV = ","
+TSV = "\t"
+DEL = CSV
+
+TRAIN = ""
+#TRAIN = np.genfromtxt(TRAIN, delimiter=DEL)
+
+TEST = ""
+#TEST = np.genfromtxt(TEST, delimiter=DEL)
+
+FLAG = "f"
+#FLAG = "cross"
+
+IRIS = True
+#IRIS = False
+
+JOBS = 2
+
+C = np.append(np.array([1e-06, 1e-05, 1e-04, 0.001, 0.01]), np.arange(0.1, 30.1, 0.1))
+GAMMA = np.append(np.array([0, 1e-06, 1e-05, 1e-04, 0.001, 0.01]), np.arange(0.1, 30.1, 0.1))
+DEGREE = np.arange(2, 11)
+NEIGHBOR = np.arange(1, 16)
+WEIGHT = ["uniform", "distance"]
+CV = 20
+
+if FLAG == "f" :
+	if IRIS :
+		iris = datasets.load_iris()
+		x_train = iris.data[xrange(0, len(iris.data), 2)]
+		y_train = iris.target[xrange(0, len(iris.data), 2)]
+		x_test = iris.data[xrange(1, len(iris.data), 2)]
+		y_test = iris.target[xrange(1, len(iris.data), 2)]
+		target_names = iris.target_names
+
+	else :
+		row1 = TRAIN.shape[1]
+		row2 = TEST.shape[1]
+		x_train = TRAIN[:,:row1-1]
+		y_train = TRAIN[:,row1-1:]
+		x_test = TEST[:,:row2-1]
+		y_test = TEST[:,row2-1:]
+
+elif FLAG == "cross" :
+	if IRIS :
+		x_train = datasets.load_iris().data
+		y_learn = datasets.load_iris().target
+
+	else :
+		row1 = TRAIN.shape[1]
+		x_train = data[:,:row1-1]
+		y_train = data[:,row1-1:]
+
+exit()
+
+
 argvs = sys.argv								# コマンドライン引数を取得する
 if len(argvs) == 3 :							# 引数の数が適切な時（3）
 	filename = argvs[1] + ".csv"				# 1番目の引数をcsvファイルの名前として取り扱う（ただし".csv"は入力不要）
@@ -42,28 +97,28 @@ class App() :
 		t.write(str(p) + "\n")
 		print(p)
 
-	def main(self, classification) :
+	def main(self, flag) :
 		label = self.label
 
-		if classification == "knn" :
+		if flag == "knn" :
 			est = neighbors.KNeighborsClassifier()
 			param = {"n_neighbors":neighbor ,"weights":weight}
-		elif classification == "liner" :
+		elif flag == "liner" :
 			est = svm.SVC()
 			param = {"kernel":["linear"], "C":c}
-		elif classification == "rbf" :
+		elif flag == "rbf" :
 			est = svm.SVC()
 			param = {"kernel":["rbf"], "C":c, "gamma":gamma}
-		elif classification == "poly" :
+		elif flag == "poly" :
 			est = svm.SVC()
 			param = {"kernel":["poly"], "C":c, "degree":degree}
 		else :
 			sys.exit("Only 'knn', 'liner', 'rbf'")
 
-		if classification == "knn" :
-			label += classification
+		if flag == "knn" :
+			label += flag
 		else :
-			label += "SVM_%s" %classification
+			label += "SVM_%s" %flag
 		
 		t = open(label + ".txt", "w")
 		self.output(t, label)
