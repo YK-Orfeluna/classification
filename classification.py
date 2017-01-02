@@ -15,15 +15,15 @@ TRAIN = np.genfromtxt(TRAIN, delimiter=DEL)
 TEST = "iris_test.csv"
 TEST = np.genfromtxt(TEST, delimiter=DEL)
 
-FLAG = "f"					# 学習データとテストデータでF値を使って精度検証
-#FLAG = "cross"				# K分割交差検定を行う（K = CV）
+#FLAG = "f"					# 学習データとテストデータでF値を使って精度検証
+FLAG = "cross"				# K分割交差検定を行う（K = CV）
 
 #IRIS = True				# irisデータを使ったデモ
 IRIS = False
 
 JOBS = 2					# 同時進行スレッド数
 
-if IRIS :					# irisｓデータを扱う場合のチューニング変数
+if IRIS :					# irisデータを扱う場合のチューニング変数
 	C = GAMMA = DEGREE = NEIGHBOR = [1, 2, 3, 4, 5]
 else :						# 通常のチューニング変数
 	C = np.append(np.array([1e-06, 1e-05, 1e-04, 0.001, 0.01]), np.arange(0.1, 30.1, 0.1))
@@ -48,22 +48,32 @@ if FLAG == "f" :			# F値で検定を行う場合の，学習・テストデー�
 		target_names = iris.target_names
 
 	else :
-		row1 = TRAIN.shape[1]
-		row2 = TEST.shape[1]
-		x_train = TRAIN[:,:row1-1]
-		y_train = TRAIN[:,row1-1:]
-		x_test = TEST[:,:row2-1]
-		y_test = TEST[:,row2-1:]
+		row = TRAIN.shape[1]
+		x_train = TRAIN[:,:row-1]
+		y_train = TRAIN[:,row-1:]
+
+		row = TEST.shape[1]
+		x_test = TEST[:,:row-1]
+		y_test = TEST[:,row-1:]
 
 elif FLAG == "cross" :		# 交差検定を行う場合の，学習データの作成
 	if IRIS :				# irisデータを扱う場合
 		x_train = datasets.load_iris().data
-		y_learn = datasets.load_iris().target
+		y_train = datasets.load_iris().target
+		print x_train.shape
+		print y_train.shape
+		exit()
 
 	else :
 		row1 = TRAIN.shape[1]
-		x_train = data[:,:row1-1]
-		y_train = data[:,row1-1:]
+		x_train = TRAIN[:,:row1-1]
+		y_train = TRAIN[:,row1-1:]
+		if len(y_train.shape) == 2 :
+			y_train = y_train[:, 0]
+		#y_train = y_train.astype(np.int64)
+		#print x_train.shape
+		#print y_train.shape
+		#exit()
 
 class App() :
 	def __init__(self) :
@@ -78,18 +88,18 @@ class App() :
 
 		if flag == "knn" :
 			est = neighbors.KNeighborsClassifier()
-			param = {"n_neighbors":neighbor ,"weights":weight}
+			param = PARAM_KNN
 		elif flag == "liner" :
 			est = svm.SVC()
-			param = {"kernel":["linear"], "C":c}
+			param = PARAM_LINER
 		elif flag == "rbf" :
 			est = svm.SVC()
-			param = {"kernel":["rbf"], "C":c, "gamma":gamma}
+			param = PARAM_RBF
 		elif flag == "poly" :
 			est = svm.SVC()
-			param = {"kernel":["poly"], "C":c, "degree":degree}
+			param = PARAM_POLY
 		else :
-			sys.exit("Only 'knn', 'liner', 'rbf'")
+			sys.exit("Only 'knn', 'liner', 'poly' or rbf'")
 
 		if flag == "knn" :
 			label += flag
@@ -100,8 +110,8 @@ class App() :
 		self.output(t, label)
 
 
-		clf = GridSearchCV(est, param, cv=cv, n_jobs=jobs)
-		clf.fit(X_learn, y_learn)
+		clf = GridSearchCV(est, param, cv=CV, n_jobs=JOBS)
+		clf.fit(x_train, y_train)
 		print("fit")
 
 		b_score = "Best Score: %s" %clf.best_score_
@@ -128,7 +138,7 @@ if __name__ == "__main__" :
 	app = App()
 	app.main("knn")
 	app.main("liner")
-	app.main("poly")
+	#app.main("poly")
 	app.main("rbf")
 
 	sys.exit("System Exit")
