@@ -5,6 +5,24 @@ import numpy as np
 from sklearn import datasets, neighbors, svm
 from sklearn.model_selection import GridSearchCV
 
+#FLAG = "f"					# 学習データとテストデータでF値を使って精度検証
+FLAG = "cross"				# K分割交差検定を行う（K = CV）
+
+KNN = True
+#KNN = False
+
+LINER = True
+#LINER = False
+
+POLY = True
+#POLY = False
+
+RBF = True
+#RBF = False
+
+#IRIS = True				# irisデータを使ったデモ
+IRIS = False
+
 CSV = ","
 TSV = "\t"
 DEL = CSV
@@ -15,14 +33,6 @@ TRAIN = np.genfromtxt(TRAIN, delimiter=DEL)
 TEST = "iris_test.csv"
 TEST = np.genfromtxt(TEST, delimiter=DEL)
 
-#FLAG = "f"					# 学習データとテストデータでF値を使って精度検証
-FLAG = "cross"				# K分割交差検定を行う（K = CV）
-
-#IRIS = True				# irisデータを使ったデモ
-IRIS = False
-
-JOBS = 2					# 同時進行スレッド数
-
 if IRIS :					# irisデータを扱う場合のチューニング変数
 	C = GAMMA = DEGREE = NEIGHBOR = [1, 2, 3, 4, 5]
 else :						# 通常のチューニング変数
@@ -32,58 +42,56 @@ else :						# 通常のチューニング変数
 	NEIGHBOR = np.arange(1, 16)
 WEIGHT = ["uniform", "distance"]
 CV = 20
+JOBS = 2					# 同時進行スレッド数
 
 PARAM_KNN = {"n_neighbors":NEIGHBOR ,"weights":WEIGHT}
 PARAM_LINER = {"kernel":["linear"], "C":C}
 PARAM_POLY = {"kernel":["poly"], "C":C, "degree":DEGREE}
 PARAM_RBF = {"kernel":["rbf"], "C":C, "gamma":GAMMA}
 
-if FLAG == "f" :			# F値で検定を行う場合の，学習・テストデータの作成
-	if IRIS :				# irisデータを扱う場合
-		iris = datasets.load_iris()
-		x_train = iris.data[xrange(0, len(iris.data), 2)]
-		y_train = iris.target[xrange(0, len(iris.data), 2)]
-		x_test = iris.data[xrange(1, len(iris.data), 2)]
-		y_test = iris.target[xrange(1, len(iris.data), 2)]
-		target_names = iris.target_names
-
-	else :
-		row = TRAIN.shape[1]
-		x_train = TRAIN[:,:row-1]
-		y_train = TRAIN[:,row-1:]
-
-		row = TEST.shape[1]
-		x_test = TEST[:,:row-1]
-		y_test = TEST[:,row-1:]
-
-elif FLAG == "cross" :		# 交差検定を行う場合の，学習データの作成
-	if IRIS :				# irisデータを扱う場合
-		x_train = datasets.load_iris().data
-		y_train = datasets.load_iris().target
-		print x_train.shape
-		print y_train.shape
-		exit()
-
-	else :
-		row1 = TRAIN.shape[1]
-		x_train = TRAIN[:,:row1-1]
-		y_train = TRAIN[:,row1-1:]
-		if len(y_train.shape) == 2 :
-			y_train = y_train[:, 0]
-		#y_train = y_train.astype(np.int64)
-		#print x_train.shape
-		#print y_train.shape
-		#exit()
-
 class App() :
 	def __init__(self) :
 		self.label = "Classification_"
+
+	def data(self) :				# データ作成
+		if FLAG == "f" :			# F値で検定を行う場合の，学習・テストデータの作成
+			if IRIS :				# irisデータを扱う場合
+				iris = datasets.load_iris()
+
+				self.x_train = iris.data[xrange(0, len(iris.data), 2)]
+				self.y_train = iris.target[xrange(0, len(iris.data), 2)]
+
+				self.x_test = iris.data[xrange(1, len(iris.data), 2)]
+				self.y_test = iris.target[xrange(1, len(iris.data), 2)]
+
+				target_names = iris.target_names
+
+			else :
+				row = TRAIN.shape[1]
+				self.x_train = TRAIN[:,:row-1]
+				self.y_train = TRAIN[:,row-1:]
+
+				row = TEST.shape[1]
+				self.x_test = TEST[:,:row-1]
+				self.y_test = TEST[:,row-1:]
+
+		elif FLAG == "cross" :		# 交差検定を行う場合の，学習データの作成
+			if IRIS :				# irisデータを扱う場合
+				self.x_train = datasets.load_iris().data
+				self.y_train = datasets.load_iris().target
+
+			else :
+				row1 = TRAIN.shape[1]
+				self.x_train = TRAIN[:,:row1-1]
+				self.y_train = TRAIN[:,row1-1:]
+				if len(y_train.shape) == 2 :
+					self.y_train = self.y_train[:, 0]
 
 	def output(self, t, p) :
 		t.write(str(p) + "\n")
 		print(p)
 
-	def main(self, flag) :
+	def cross(self, flag) :
 		label = self.label
 
 		if flag == "knn" :
@@ -136,9 +144,13 @@ class App() :
 
 if __name__ == "__main__" :
 	app = App()
-	app.main("knn")
-	app.main("liner")
-	#app.main("poly")
-	app.main("rbf")
-
-	sys.exit("System Exit")
+	
+	if FLAG == "cross" :
+		if KNN :
+			app.cross("knn")
+		if LINER :
+			app.cross("liner")
+		if POLY :
+			app.cross("poly")
+		if RBF :
+			app.cross("rbf")
