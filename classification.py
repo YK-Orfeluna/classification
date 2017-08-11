@@ -1,156 +1,162 @@
 # -*- coding: utf-8 -*-
 
-import sys 
+
+import json
+from os.path import splitext
+
 import numpy as np
-from sklearn import datasets, neighbors, svm
+import pandas as pd
+
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import confusion_matrix, classification_report, f1_score
 
-#FLAG = "f"					# 学習データとテストデータでF値を使って精度検証
-FLAG = "cross"				# K分割交差検定を行う（K = CV）
+def read_data(filename) :
+	if splitext(filename)[1] == ".csv" :
+		df = pd.read_csv(filename, header=None, index_col=None)
+	elif splitext(filename)[1] == ".tsv" :
+		df = pd.read_csv(filename, header=None, index_col=None, delimiter="\t")
+	else :
+		exit("Error: this script can read CSV or TSV file only.")
 
-KNN = True
-#KNN = False
+	data = df.values[:, :-1].copy()		# 最後の1行以外をデータセットにする
+	label = df.values[:, -1].copy()		# 最後の1行をラベルにする
 
-LINER = True
-#LINER = False
+	return data, label
 
-POLY = True
-#POLY = False
+class Classification() :
+	def __init__(self, njobs, config_json, traindata, testdata) :
+		self.njobs = njobs
 
-RBF = True
-#RBF = False
 
-#IRIS = True				# irisデータを使ったデモ
-IRIS = False
+		self.param = {}
+		self.method = ""
+		self.K = 20
 
-CSV = ","
-TSV = "\t"
-DEL = CSV
+		self.load_config(config_json)
 
-TRAIN = "iris_train.csv"
-TRAIN = np.genfromtxt(TRAIN, delimiter=DEL)
 
-TEST = "iris_test.csv"
-TEST = np.genfromtxt(TEST, delimiter=DEL)
+		self.train_data = np.array([])
+		self.train_label = np.array([])
+		self.test_data = np.array([])
+		self.test_label = np.array([])
+		self.gs_data = np.array([])
+		self.gs_label = np.array([])
 
-if IRIS :					# irisデータを扱う場合のチューニング変数
-	C = GAMMA = DEGREE = NEIGHBOR = [1, 2, 3, 4, 5]
-else :						# 通常のチューニング変数
-	C = np.append(np.array([1e-06, 1e-05, 1e-04, 0.001, 0.01]), np.arange(0.1, 30.1, 0.1))
-	GAMMA = np.append(np.array([0, 1e-06, 1e-05, 1e-04, 0.001, 0.01]), np.arange(0.1, 30.1, 0.1))
-	DEGREE = np.arange(2, 11)
-	NEIGHBOR = np.arange(1, 16)
-WEIGHT = ["uniform", "distance"]
-CV = 20
-JOBS = 2					# 同時進行スレッド数
+		self.load_dataset(traindata, testdata)
 
-PARAM_KNN = {"n_neighbors":NEIGHBOR ,"weights":WEIGHT}
-PARAM_LINER = {"kernel":["linear"], "C":C}
-PARAM_POLY = {"kernel":["poly"], "C":C, "degree":DEGREE}
-PARAM_RBF = {"kernel":["rbf"], "C":C, "gamma":GAMMA}
 
-class App() :
-	def __init__(self) :
-		self.label = "Classification_"
+		self.best_clf = None
 
-	def data(self) :				# データ作成
-		if FLAG == "f" :			# F値で検定を行う場合の，学習・テストデータの作成
-			if IRIS :				# irisデータを扱う場合
-				iris = datasets.load_iris()
-
-				self.x_train = iris.data[xrange(0, len(iris.data), 2)]
-				self.y_train = iris.target[xrange(0, len(iris.data), 2)]
-
-				self.x_test = iris.data[xrange(1, len(iris.data), 2)]
-				self.y_test = iris.target[xrange(1, len(iris.data), 2)]
-
-				target_names = iris.target_names
-
-			else :
-				row = TRAIN.shape[1]
-				self.x_train = TRAIN[:,:row-1]
-				self.y_train = TRAIN[:,row-1:]
-
-				row = TEST.shape[1]
-				self.x_test = TEST[:,:row-1]
-				self.y_test = TEST[:,row-1:]
-
-		elif FLAG == "cross" :		# 交差検定を行う場合の，学習データの作成
-			if IRIS :				# irisデータを扱う場合
-				self.x_train = datasets.load_iris().data
-				self.y_train = datasets.load_iris().target
-
-			else :
-				row1 = TRAIN.shape[1]
-				self.x_train = TRAIN[:,:row1-1]
-				self.y_train = TRAIN[:,row1-1:]
-				if len(y_train.shape) == 2 :
-					self.y_train = self.y_train[:, 0]
-
-	def output(self, t, p) :
-		t.write(str(p) + "\n")
-		print(p)
-
-	def cross(self, flag) :
-		label = self.label
-
-		if flag == "knn" :
-			est = neighbors.KNeighborsClassifier()
-			param = PARAM_KNN
-		elif flag == "liner" :
-			est = svm.SVC()
-			param = PARAM_LINER
-		elif flag == "rbf" :
-			est = svm.SVC()
-			param = PARAM_RBF
-		elif flag == "poly" :
-			est = svm.SVC()
-			param = PARAM_POLY
+	def load_config(self, config_json) :
+		if splitext(config_json)[1] == ".json" :
+			with open(config_json, "r") as fd:
+				config = json.load(fd)			# config用のjsonを読み込む
 		else :
-			sys.exit("Only 'knn', 'liner', 'poly' or rbf'")
-
-		if flag == "knn" :
-			label += flag
-		else :
-			label += "SVM_%s" %flag
-		
-		t = open(label + ".txt", "w")
-		self.output(t, label)
+			exit("Error: this script can read JSON-file as config-file.\nYou should choose JSON-file.")
 
 
-		clf = GridSearchCV(est, param, cv=CV, n_jobs=JOBS)
-		clf.fit(x_train, y_train)
-		print("fit")
+		self.method = config["method"]		# 分類手法の読み込み
 
-		b_score = "Best Score: %s" %clf.best_score_
-		self.output(t, b_score)
-		b_param = "Best Param: %s" %clf.best_params_
-		self.output(t, b_param)
+		if self.method != "SVM" and self.method != "KNN" :
+			exit("Error: your chose method is not supported by this sciprt.\nYou should choose 'SVM' or 'KNN'.")
 
-		di = clf.cv_results_
-		di_params = "Each-Param: %s" %str(di["params"])
-		self.output(t, di_params)
-		mean = "Each Mean-Score: %s" %di["mean_test_score"]
-		self.output(t, mean)
-		std = "Each Std-Score: %s" %di["std_test_score"]
-		self.output(t, std)
 
-		"""
-		for k, v in sorted(di.items()):				# cv_results_の中身をソートしてprint()
-			print(str(k) + ": " + str(v) + "\n")
-		"""
+		self.K = config["K"]			# K-fold Cross ValidationのKを読み込み
 
-		t.close()
+		self.param = config["param"]
+
+
+	def load_dataset(self, traindata, testdata) :
+		if testdata != "-1" :
+			self.train_data, self.train_label = read_data(traindata)		# 学習データの読み込み
+			self.test_data, self.test_label = read_data(testdata)			# テストデータの読み込み
+
+			self.gs_data = self.train_data.copy()
+			self.gs_label = self.train_data.copy()
+
+		else :															# testdataが-1だった場合，traindataを分割する
+			data, label = read_data(traindata)
+
+			self.gs_data = data.copy()
+			self.gs_label = label.copy()
+
+			self.train_data = data[0::2, :].copy()
+			self.train_label = label[0::2].copy()
+
+			self.test_data = data[1::2, :].copy()
+			self.test_label = label[1::2].copy()
+
+	def crossvalidation(self) :
+		if self.method == "KNN" :
+			clf = KNeighborsClassifier()
+		elif self.method == "SVM" :
+			clf = SVC(probability=True, decision_function_shape="ovr")
+			
+		gs = GridSearchCV(clf, self.param)
+		gs.fit(self.gs_data, self.gs_label)
+
+		gs_result = pd.DataFrame(gs.cv_results_)
+		gs_result.to_csv("gs_result.csv")
+
+		best_param = gs.best_params_
+		print("best parameter: %s" %best_param)
+
+		accuracy = gs.best_score_
+		print("best accuracy: %.3f" %accuracy)
+
+		index = gs.best_index_
+		accuracy_SD = gs_result["std_test_score"][index]
+		print("SD of accuracy: %.3f" %accuracy_SD)
+
+		self.best_clf = gs.best_estimator_
+
+
+	def classification(self) :
+		clf = self.best_clf
+		clf.fit(self.train_data, self.train_label)
+
+		predict = clf.predict(self.test_data)
+		matrix = confusion_matrix(self.test_label, predict)
+		report = classification_report(self.test_label, predict)
+
+		print("confusion matrix: ")
+		print(matrix)
+		print("Result: ")
+		print(report)
+
+		reports = report.strip().split()
+		precision = float(reports[-4])
+		recall = float(reports[-3])
+		f1 = float(reports[-2])
+
+		print("precision, recall, f1: ", precision, recall, f1)
+
+
+	def main(self) :
+		self.crossvalidation()
+		self.classification()
+
+
+
 
 if __name__ == "__main__" :
-	app = App()
 	
-	if FLAG == "cross" :
-		if KNN :
-			app.cross("knn")
-		if LINER :
-			app.cross("liner")
-		if POLY :
-			app.cross("poly")
-		if RBF :
-			app.cross("rbf")
+	"""
+	$1:	njobs
+	$2:	config_json	("*.json")
+	$3:	traindata	("*.csv" or "*.tsv", headerとindexはなし)
+	$4:	testdata	("*.csv" or "*.tsv", headerとindexはなし)
+			traindataを分割してtestdataとしたい場合，$4に-1を入力する
+	"""
+
+	from sys import argv
+
+	njobs = int(argv[1])
+	config_json = argv[2]
+	traindata = argv[3]
+	testdata = argv[4]
+
+	clf = Classification(njobs, config_json, traindata, testdata)
+	clf.main()
