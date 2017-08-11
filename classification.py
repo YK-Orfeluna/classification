@@ -26,7 +26,8 @@ def read_data(filename) :
 	return data, label
 
 class Classification() :
-	def __init__(self, njobs, config_json, traindata, testdata) :
+	def __init__(self, njobs, config_json, traindata, testdata, rslt) :
+
 		self.njobs = njobs
 
 
@@ -45,6 +46,9 @@ class Classification() :
 		self.gs_label = np.array([])
 
 		self.load_dataset(traindata, testdata)
+
+
+		self.rslt = rslt
 
 
 		self.best_clf = None
@@ -98,7 +102,7 @@ class Classification() :
 		gs.fit(self.gs_data, self.gs_label)
 
 		gs_result = pd.DataFrame(gs.cv_results_)
-		gs_result.to_csv("gs_result.csv")
+		gs_result.to_csv("%s_GS.csv" %self.rslt)
 
 		best_param = gs.best_params_
 		print("best parameter: %s" %best_param)
@@ -111,6 +115,7 @@ class Classification() :
 		print("SD of accuracy: %.3f" %accuracy_SD)
 
 		self.best_clf = gs.best_estimator_
+		print(self.best_clf)
 
 
 	def classification(self) :
@@ -149,14 +154,19 @@ if __name__ == "__main__" :
 	$3:	traindata	("*.csv" or "*.tsv", headerとindexはなし)
 	$4:	testdata	("*.csv" or "*.tsv", headerとindexはなし)
 			traindataを分割してtestdataとしたい場合，$4に-1を入力する
+	$5:	result_name	(without ext)
 	"""
 
 	from sys import argv
+
+	if len(argv) != 6 :
+		exit("Error: missing args")
 
 	njobs = int(argv[1])
 	config_json = argv[2]
 	traindata = argv[3]
 	testdata = argv[4]
+	rslt = argv[5]
 
-	clf = Classification(njobs, config_json, traindata, testdata)
+	clf = Classification(njobs, config_json, traindata, testdata, rslt)
 	clf.main()
