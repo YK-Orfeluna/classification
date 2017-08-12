@@ -10,7 +10,8 @@ import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import confusion_matrix, classification_report, f1_score
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.externals import joblib
 
 def read_data(filename) :
 	if splitext(filename)[1] == ".csv" :
@@ -116,6 +117,7 @@ class Classification() :
 
 		self.best_clf = gs.best_estimator_
 		print(self.best_clf)
+		joblib.dump(self.best_clf, "%s.pkl" %self.rslt)
 
 
 	def classification(self) :
@@ -158,6 +160,7 @@ if __name__ == "__main__" :
 	"""
 
 	from sys import argv
+	from multiprocessing import cpu_count
 
 	if len(argv) != 6 :
 		exit("Error: missing args")
@@ -167,6 +170,29 @@ if __name__ == "__main__" :
 	traindata = argv[3]
 	testdata = argv[4]
 	rslt = argv[5]
+
+	while True :
+		if njobs > cpu_count() :
+			exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's number of CPU is %d." %cpu_count())
+		elif njobs == cpu_count() :
+			print("Warning: your chose number of jobs and your PC's number of CPU are same.\nWould you agree that this script continues the processing?")
+			key = input("[y / n] >>>")
+
+			if key == "y" :
+				break
+			if key == "n" :
+				print("Do you want to change the number of jobs?")
+				key = input("[y / n] >>>")
+
+				if key == "y" :
+					print("Input the number of jobs.")
+					njobs = int(input(">>>"))
+				if key == "n" :
+					exit()
+				else :
+					continue
+			else :
+				continue 
 
 	clf = Classification(njobs, config_json, traindata, testdata, rslt)
 	clf.main()
