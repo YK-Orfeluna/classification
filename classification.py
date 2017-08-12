@@ -9,9 +9,18 @@ import pandas as pd
 
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
+
+from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
+
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
+
+KNN = "KNN"
+SVM = "SVM"
+Kmeans = "Kmeans"
+GMM = "GMM"
 
 def read_data(filename) :
 	if splitext(filename)[1] == ".csv" :
@@ -64,8 +73,9 @@ class Classification() :
 
 		self.method = config["method"]		# 分類手法の読み込み
 
-		if self.method != "SVM" and self.method != "KNN" :
-			exit("Error: your chose method is not supported by this sciprt.\nYou should choose 'SVM' or 'KNN'.")
+		if self.method != SVM and self.method != KNN and self.method != Kmeans and self.method != GMM :
+			exit("Error: your chose method is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'." \
+				%(SVM, KNN, Kmeans, GMM))
 
 
 		self.K = config["K"]			# K-fold Cross ValidationのKを読み込み
@@ -94,10 +104,14 @@ class Classification() :
 			self.test_label = label[1::2].copy()
 
 	def crossvalidation(self) :
-		if self.method == "KNN" :
+		if self.method == KNN :
 			clf = KNeighborsClassifier()
-		elif self.method == "SVM" :
+		elif self.method == SVM :
 			clf = SVC(probability=True, decision_function_shape="ovr")
+		elif self.method == Kmeans :
+			clf = KMeans()
+		elif self.method == GMM :
+			clf = GaussianMixture()
 			
 		gs = GridSearchCV(clf, self.param)
 		gs.fit(self.gs_data, self.gs_label)

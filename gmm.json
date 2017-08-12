@@ -1,0 +1,11 @@
+{
+	"method": 		"GMM",
+	"K":			20,
+	"param":		{
+						"n_components":		[3],
+						"covariance_type":	["full", "tied", "diag", "spherical"],
+						"tol":				[1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+						"reg_covar":		[1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+						"max_iter":			[100, 200, 300]
+					}
+}
