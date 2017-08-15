@@ -17,10 +17,22 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
 
+from bayesian_optimizer import BayesianOptimizer
+
 KNN = "KNN"
 SVM = "SVM"
 Kmeans = "Kmeans"
 GMM = "GMM"
+
+CV = "CV"
+Bayes = "Bayes"
+auto = "auto"
+
+import math
+def k(n) :
+	out =  (1 + math.log(n) / math.log(2)) * 4
+	out = int(round(out, 0))
+	return out
 
 def read_data(filename) :
 	if splitext(filename)[1] == ".csv" :
@@ -43,7 +55,6 @@ class Classification() :
 
 		self.param = {}
 		self.method = ""
-		self.K = 20
 
 		self.load_config(config_json)
 
@@ -59,6 +70,7 @@ class Classification() :
 
 
 		self.rslt = rslt
+		self.fd = open(rslt+".txt", "w")
 
 
 		self.best_clf = None
@@ -78,7 +90,13 @@ class Classification() :
 				%(SVM, KNN, Kmeans, GMM))
 
 
-		self.K = config["K"]			# K-fold Cross ValidationのKを読み込み
+		# K-fold Cross ValidationのKを読み込み
+		if config["K"] == auto :
+			self.cv = k(self.gs_data.shape[0])
+		else :
+			self.cv = int(config["K"])
+
+		self.method = config["method"]
 
 		self.param = config["param"]
 
@@ -103,35 +121,44 @@ class Classification() :
 			self.test_data = data[1::2, :].copy()
 			self.test_label = label[1::2].copy()
 
-	def crossvalidation(self) :
-		if self.method == KNN :
-			clf = KNeighborsClassifier()
-		elif self.method == SVM :
-			clf = SVC(probability=True, decision_function_shape="ovr")
-		elif self.method == Kmeans :
-			clf = KMeans()
-		elif self.method == GMM :
-			clf = GaussianMixture()
-			
-		gs = GridSearchCV(clf, self.param)
+	def crossvalidation(self, param=None, debug=True) :
+		if param == None :
+			param = self.param
+
+		gs = GridSearchCV(clf, param, cv=self.cv)
 		gs.fit(self.gs_data, self.gs_label)
 
 		gs_result = pd.DataFrame(gs.cv_results_)
-		gs_result.to_csv("%s_GS.csv" %self.rslt)
+		if debug :
+			gs_result.to_csv("%s_GS.csv" %self.rslt)
 
 		best_param = gs.best_params_
-		print("best parameter: %s" %best_param)
+		
+		if debug :
+			self.fd.write("best parameter:\n")
+			self.fd.write(best_param)
+			self.fd.write("\n")
+			print("best parameter: %s" %best_param)
 
 		accuracy = gs.best_score_
-		print("best accuracy: %.3f" %accuracy)
+		
+		if debug :
+			self.fd.write("best accuracy: %.3f\n" %accuracy)
+			print("best accuracy: %.3f" %accuracy)
 
 		index = gs.best_index_
 		accuracy_SD = gs_result["std_test_score"][index]
-		print("SD of accuracy: %.3f" %accuracy_SD)
+		
+		if debug :
+			self.fd.write("SD of accuracy: %.3f\n" %accuracy_SD)
+			print("SD of accuracy: %.3f\n" %accuracy_SD)
 
 		self.best_clf = gs.best_estimator_
-		print(self.best_clf)
-		joblib.dump(self.best_clf, "%s.pkl" %self.rslt)
+		if debug :
+			print(self.best_clf)
+			joblib.dump(self.best_clf, "%s.pkl" %self.rslt)
+
+		return accuracy
 
 
 	def classification(self) :
@@ -147,17 +174,62 @@ class Classification() :
 		print("Result: ")
 		print(report)
 
+		self.fd.write("confusion matrix: \n")
+		self.fd.write(matrix)
+		self.fd.write("\n")
+
+		self.fd.write("Result: \n")
+		self.fd.write(report)
+		self.fd.write("\n")
+
 		reports = report.strip().split()
 		precision = float(reports[-4])
 		recall = float(reports[-3])
 		f1 = float(reports[-2])
 
 		print("precision, recall, f1: ", precision, recall, f1)
+		self.fd.write("precision: %s\n" %precision)
+		self.fd.write("recall: %s\n" %recall)
+		self.fd.write("F-measure: %s\n" %f1)
+
+	def bayesian(self) :
+		for p1 in self.param :
+			bo = BayesianOptimizer(p1)
+
+			for p2 in bo.supply_next_param() :
+				y = self.classification(param=p1, debug=False)
+				bo.report(y)
+			bayes_rslt = bo.best_results()
+
+			print(bayes_rslt)
+			self.fd.write(bayes_rslt)
+			self.fd.write("\n")
 
 
 	def main(self) :
-		self.crossvalidation()
-		self.classification()
+		if self.method == KNN :
+			clf = KNeighborsClassifier()
+		elif self.method == SVM :
+			clf = SVC(probability=True, decision_function_shape="ovr")
+		elif self.method == Kmeans :
+			clf = KMeans()
+		elif self.method == GMM :
+			clf = GaussianMixture()
+		else :
+			exit()
+
+		if self.method == CV
+			self.crossvalidation()
+			self.classification()
+
+		elif self.method == Bayes :
+			self.bayesian()
+
+		else :
+			exit()
+
+		self.fd.close()
+		exit("done")
 
 
 
@@ -177,7 +249,7 @@ if __name__ == "__main__" :
 	from multiprocessing import cpu_count
 
 	if len(argv) != 6 :
-		exit("Error: missing args")
+		exit("Error: args [njobs] [config-file (JSON)] [traindata(CSV or TSV)] [testdata(CSV or TSV or -1)] [result name(without ext)]")
 
 	njobs = int(argv[1])
 	config_json = argv[2]

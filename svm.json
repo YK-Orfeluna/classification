@@ -1,6 +1,7 @@
 {
 	"method": 		"SVM",
-	"K":			20,
+	"method":		"CV",
+	"K":			"auto",
 	"param":		[
 						{
 							"kernel":		["linear"],
