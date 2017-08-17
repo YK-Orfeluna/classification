@@ -132,7 +132,7 @@ class Classification() :
 		if param == None :
 			param = self.param
 
-		gs = GridSearchCV(self.clf, param, cv=self.cv)
+		gs = GridSearchCV(self.clf, param, cv=self.cv, n_jobs=self.njobs)
 		gs.fit(self.gs_data, self.gs_label)
 
 		gs_result = pd.DataFrame(gs.cv_results_)
@@ -143,7 +143,7 @@ class Classification() :
 		
 		if debug :
 			self.fd.write("best parameter:\n")
-			self.fd.write(best_param)
+			self.fd.write("%s" %best_param)
 			self.fd.write("\n")
 			print("best parameter: %s" %best_param)
 
