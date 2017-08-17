@@ -1,7 +1,7 @@
 {
 	"method": 		"SVM",
 	"evaluation":		"CV",
-	"K":			"60",
+	"K":			"auto",
 	"param":		[
 						{
 							"kernel":		["rbf"],

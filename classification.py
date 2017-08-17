@@ -17,7 +17,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
 
-#from bayesian_optimizer import BayesianOptimizer
+from bayesian_optimizer import BayesianOptimizer
 
 KNN = "KNN"
 SVM = "SVM"
@@ -42,15 +42,15 @@ def read_data(filename) :
 	else :
 		exit("Error: this script can read CSV or TSV file only.")
 
-	data = df.values[:, :-1].copy()		# 最後の1行以外をデータセットにする
-	label = df.values[:, -1].copy()		# 最後の1行をラベルにする
+	data = df.values[:, :-1].copy()			# 最後の1行以外をデータセットにする
+	label = df.values[:, -1].copy()			# 最後の1行をラベルにする
 
 	return data, label
 
 class Classification() :
 	def __init__(self, njobs, config_json, traindata, testdata, rslt) :
 
-		self.njobs = njobs
+		self.njobs = int(round(njobs, 0))
 
 
 		self.param = {}
@@ -87,21 +87,25 @@ class Classification() :
 		self.method = config["method"]		# 分類手法の読み込み
 
 		if self.method != SVM and self.method != KNN and self.method != Kmeans and self.method != GMM :
-			exit("Error: your chose method is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'.\nYou chose %s" \
-				%(SVM, KNN, Kmeans, GMM, self.method))
+			exit("Error: your chose method('%s') is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'.\nYou chose %s" \
+				%(self.method, SVM, KNN, Kmeans, GMM))
 
 
 		# K-fold Cross ValidationのKを読み込み
 		if config["K"] == auto :
 			self.cv = k(self.gs_data.shape[0])
 		else :
-			self.cv = int(config["K"])
+			self.cv = int(round(config["K"], 0))
 
-		self.eval = config["evaluation"]
+		if config["evaluation"] == CV or config["evaluation"] == Bayes :
+			self.eval = config["evaluation"]
+		else :
+			exit("Error: your chose CV-method('%s') is not supported by this script\nYou should choose '%s' or '%s'" \
+				%(config["evaluation"], CV, Bayes))
 
 		self.param = config["param"]
 
-		print("done: read config")
+		print("done: read config-file")
 
 
 	def load_dataset(self, traindata, testdata) :
@@ -129,41 +133,41 @@ class Classification() :
 	def crossvalidation(self, param=None, debug=True) :
 		if debug :
 			print("start CrossValidation")
+
 		if param == None :
 			param = self.param
 
+
 		gs = GridSearchCV(self.clf, param, cv=self.cv, n_jobs=self.njobs)
 		gs.fit(self.gs_data, self.gs_label)
+
 
 		gs_result = pd.DataFrame(gs.cv_results_)
 		if debug :
 			gs_result.to_csv("%s_GS.csv" %self.rslt)
 
+
 		best_param = gs.best_params_
-		
 		if debug :
-			self.fd.write("best parameter:\n")
-			self.fd.write("%s" %best_param)
-			self.fd.write("\n")
+			self.fd.write("best parameter:\n%s\n" %best_param)
 			print("best parameter: %s" %best_param)
 
 		accuracy = gs.best_score_
-		
 		if debug :
-			self.fd.write("best accuracy: %.3f\n" %accuracy)
-			print("best accuracy: %.3f" %accuracy)
+			self.fd.write("best accuracy: %s\n" %accuracy)
+			print("best accuracy: %s" %accuracy)
 
 		index = gs.best_index_
 		accuracy_SD = gs_result["std_test_score"][index]
 		
 		if debug :
-			self.fd.write("SD of accuracy: %.3f\n" %accuracy_SD)
-			print("SD of accuracy: %.3f\n" %accuracy_SD)
+			self.fd.write("SD of accuracy: %s\n" %accuracy_SD)
+			print("SD of accuracy: %s\n" %accuracy_SD)
 
 		self.best_clf = gs.best_estimator_
 		if debug :
 			print(self.best_clf)
-			joblib.dump(self.best_clf, "%s.pkl" %self.rslt)
+			joblib.dump(self.best_clf, "%s.pkl" %self.rslt)			# pklファイルとして分類器を出力する
 
 		return accuracy
 
@@ -176,9 +180,9 @@ class Classification() :
 		matrix = confusion_matrix(self.test_label, predict)
 		report = classification_report(self.test_label, predict)
 
-		print("confusion matrix: ")
+		print("confusion matrix:\n")
 		print(matrix)
-		print("Result: ")
+		print("Result:\n")
 		print(report)
 
 		self.fd.write("confusion matrix: \n")
