@@ -17,7 +17,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
 
-from bayesian_optimizer import BayesianOptimizer
+#from bayesian_optimizer import BayesianOptimizer
 
 KNN = "KNN"
 SVM = "SVM"
@@ -55,6 +55,7 @@ class Classification() :
 
 		self.param = {}
 		self.method = ""
+		self.eval = ""
 
 		self.load_config(config_json)
 
@@ -86,8 +87,8 @@ class Classification() :
 		self.method = config["method"]		# 分類手法の読み込み
 
 		if self.method != SVM and self.method != KNN and self.method != Kmeans and self.method != GMM :
-			exit("Error: your chose method is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'." \
-				%(SVM, KNN, Kmeans, GMM))
+			exit("Error: your chose method is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'.\nYou chose %s" \
+				%(SVM, KNN, Kmeans, GMM, self.method))
 
 
 		# K-fold Cross ValidationのKを読み込み
@@ -96,9 +97,11 @@ class Classification() :
 		else :
 			self.cv = int(config["K"])
 
-		self.method = config["method"]
+		self.eval = config["evaluation"]
 
 		self.param = config["param"]
+
+		print("done: read config")
 
 
 	def load_dataset(self, traindata, testdata) :
@@ -121,11 +124,15 @@ class Classification() :
 			self.test_data = data[1::2, :].copy()
 			self.test_label = label[1::2].copy()
 
+		print("done: read datasets")
+
 	def crossvalidation(self, param=None, debug=True) :
+		if debug :
+			print("start CrossValidation")
 		if param == None :
 			param = self.param
 
-		gs = GridSearchCV(clf, param, cv=self.cv)
+		gs = GridSearchCV(self.clf, param, cv=self.cv)
 		gs.fit(self.gs_data, self.gs_label)
 
 		gs_result = pd.DataFrame(gs.cv_results_)
@@ -208,21 +215,21 @@ class Classification() :
 
 	def main(self) :
 		if self.method == KNN :
-			clf = KNeighborsClassifier()
+			self.clf = KNeighborsClassifier()
 		elif self.method == SVM :
-			clf = SVC(probability=True, decision_function_shape="ovr")
+			self.clf = SVC(probability=True, decision_function_shape="ovr")
 		elif self.method == Kmeans :
-			clf = KMeans()
+			self.clf = KMeans()
 		elif self.method == GMM :
-			clf = GaussianMixture()
+			self.clf = GaussianMixture()
 		else :
 			exit()
 
-		if self.method == CV
+		if self.eval == CV :
 			self.crossvalidation()
 			self.classification()
 
-		elif self.method == Bayes :
+		elif self.eval == Bayes :
 			self.bayesian()
 
 		else :
@@ -278,7 +285,9 @@ if __name__ == "__main__" :
 				else :
 					continue
 			else :
-				continue 
+				continue
+		else :
+			break
 
 	clf = Classification(njobs, config_json, traindata, testdata, rslt)
 	clf.main()
