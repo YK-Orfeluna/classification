@@ -9,7 +9,6 @@ import pandas as pd
 
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 
@@ -18,6 +17,7 @@ from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
 
 from bayesian_optimizer import BayesianOptimizer
+
 
 KNN = "KNN"
 SVM = "SVM"
@@ -28,13 +28,11 @@ CV = "CV"
 Bayes = "Bayes"
 auto = "auto"
 
-import math
 def k(n) :
-	out =  (1 + math.log(n) / math.log(2)) * 4
-	out = int(round(out, 0))
-	return out
+	out =  (1 + np.log(n) / np.log(2)) * 4
+	return int(round(out, 0))
 
-def read_data(filename) :
+def read_data(filename) :					# ファイル読み込み（csv/tsvに限る）
 	if splitext(filename)[1] == ".csv" :
 		df = pd.read_csv(filename, header=None, index_col=None)
 	elif splitext(filename)[1] == ".tsv" :
@@ -53,13 +51,6 @@ class Classification() :
 		self.njobs = int(round(njobs, 0))
 
 
-		self.param = {}
-		self.method = ""
-		self.eval = ""
-
-		self.load_config(config_json)
-
-
 		self.train_data = np.array([])
 		self.train_label = np.array([])
 		self.test_data = np.array([])
@@ -70,29 +61,35 @@ class Classification() :
 		self.load_dataset(traindata, testdata)
 
 
+		self.param = {}
+		self.method = ""
+		self.eval = ""
+
+		self.load_config(config_json)
+
+
 		self.rslt = rslt
 		self.fd = open(rslt+".txt", "w")
 
 
 		self.best_clf = None
 
-	def load_config(self, config_json) :
+	def load_config(self, config_json) :			# 設定用のjsonファイルを読み込む
 		if splitext(config_json)[1] == ".json" :
 			with open(config_json, "r") as fd:
-				config = json.load(fd)			# config用のjsonを読み込む
+				config = json.load(fd)				# config用のjsonを読み込む
 		else :
 			exit("Error: this script can read JSON-file as config-file.\nYou should choose JSON-file.")
 
 
-		self.method = config["method"]		# 分類手法の読み込み
-
-		if self.method != SVM and self.method != KNN and self.method != Kmeans and self.method != GMM :
+		if config["method"] == SVM or config["method"] == KNN or config["method"] == Kmeans or config["method"] == GMM :
+			self.method = config["method"]		# 分類手法の読み込み
+		else :
 			exit("Error: your chose method('%s') is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'.\nYou chose %s" \
 				%(self.method, SVM, KNN, Kmeans, GMM))
 
 
-		# K-fold Cross ValidationのKを読み込み
-		if config["K"] == auto :
+		if config["K"] == auto :					# "auto"の場合，サンプル数から自動的にCrossValidationの回数を決める
 			self.cv = k(self.gs_data.shape[0])
 		else :
 			self.cv = int(round(config["K"], 0))
@@ -103,20 +100,15 @@ class Classification() :
 			exit("Error: your chose CV-method('%s') is not supported by this script\nYou should choose '%s' or '%s'" \
 				%(config["evaluation"], CV, Bayes))
 
+
 		self.param = config["param"]
+
 
 		print("done: read config-file")
 
 
 	def load_dataset(self, traindata, testdata) :
-		if testdata != "-1" :
-			self.train_data, self.train_label = read_data(traindata)		# 学習データの読み込み
-			self.test_data, self.test_label = read_data(testdata)			# テストデータの読み込み
-
-			self.gs_data = self.train_data.copy()
-			self.gs_label = self.train_data.copy()
-
-		else :															# testdataが-1だった場合，traindataを分割する
+		if testdata == -1 or testdata == "-1" :								# testdataが-1だった場合，traindataを分割する
 			data, label = read_data(traindata)
 
 			self.gs_data = data.copy()
@@ -128,11 +120,20 @@ class Classification() :
 			self.test_data = data[1::2, :].copy()
 			self.test_label = label[1::2].copy()
 
+		else :
+			self.train_data, self.train_label = read_data(traindata)		# 学習データの読み込み
+			self.test_data, self.test_label = read_data(testdata)			# テストデータの読み込み
+
+			self.gs_data = self.train_data.copy()
+			self.gs_label = self.train_data.copy()
+
+
 		print("done: read datasets")
 
 	def crossvalidation(self, param=None, debug=True) :
 		if debug :
-			print("start CrossValidation")
+			print("start K-fold Cross Validation(K = %d)\n" %self.cv)
+
 
 		if param == None :
 			param = self.param
@@ -142,31 +143,31 @@ class Classification() :
 		gs.fit(self.gs_data, self.gs_label)
 
 
-		gs_result = pd.DataFrame(gs.cv_results_)
+		gs_result = pd.DataFrame(gs.cv_results_)			# CrossValidationの結果
 		if debug :
 			gs_result.to_csv("%s_GS.csv" %self.rslt)
 
 
-		best_param = gs.best_params_
+		best_param = gs.best_params_						# 最良平均正解率の時のパラメータ
 		if debug :
 			self.fd.write("best parameter:\n%s\n" %best_param)
-			print("best parameter: %s" %best_param)
+			print("best parameter:\t%s" %best_param)
 
-		accuracy = gs.best_score_
+		accuracy = gs.best_score_							# 最良平均正解率
 		if debug :
 			self.fd.write("best accuracy: %s\n" %accuracy)
-			print("best accuracy: %s" %accuracy)
+			print("best accuracy:\t%s" %accuracy)
 
 		index = gs.best_index_
-		accuracy_SD = gs_result["std_test_score"][index]
+		accuracy_SD = gs_result["std_test_score"][index]	# 最良平均正解率の標準偏差（SD）
 		
 		if debug :
 			self.fd.write("SD of accuracy: %s\n" %accuracy_SD)
-			print("SD of accuracy: %s\n" %accuracy_SD)
+			print("SD of accuracy:\t%s\n" %accuracy_SD)
 
-		self.best_clf = gs.best_estimator_
+		self.best_clf = gs.best_estimator_					# 最良平均正解率のモデル
 		if debug :
-			print(self.best_clf)
+			print(self.best_clf, "\n")
 			joblib.dump(self.best_clf, "%s.pkl" %self.rslt)			# pklファイルとして分類器を出力する
 
 		return accuracy
@@ -177,30 +178,26 @@ class Classification() :
 		clf.fit(self.train_data, self.train_label)
 
 		predict = clf.predict(self.test_data)
-		matrix = confusion_matrix(self.test_label, predict)
-		report = classification_report(self.test_label, predict)
+		matrix = confusion_matrix(self.test_label, predict)			# 混合行列
+		report = classification_report(self.test_label, predict)	# 混合行列を基にしたPresicion, Recall, F-measure
 
-		print("confusion matrix:\n")
-		print(matrix)
-		print("Result:\n")
+		print("confusion matrix:")
+		print(matrix, "\n")
+		print("Result:")
 		print(report)
 
-		self.fd.write("confusion matrix: \n")
-		self.fd.write(matrix)
-		self.fd.write("\n")
+		self.fd.write("confusion matrix:\n%s\n" %matrix)
 
-		self.fd.write("Result: \n")
-		self.fd.write(report)
-		self.fd.write("\n")
+		self.fd.write("Result:\n%s\n" %report)
 
 		reports = report.strip().split()
 		precision = float(reports[-4])
 		recall = float(reports[-3])
 		f1 = float(reports[-2])
 
-		print("precision, recall, f1: ", precision, recall, f1)
-		self.fd.write("precision: %s\n" %precision)
-		self.fd.write("recall: %s\n" %recall)
+		print("Precision, Recall, F-measure: %s, %s, %s" %(precision, recall, f1))
+		self.fd.write("Precision: %s\n" %precision)
+		self.fd.write("Recall: %s\n" %recall)
 		self.fd.write("F-measure: %s\n" %f1)
 
 	def bayesian(self) :
@@ -240,10 +237,6 @@ class Classification() :
 			exit()
 
 		self.fd.close()
-		exit("done")
-
-
-
 
 if __name__ == "__main__" :
 	
@@ -268,11 +261,13 @@ if __name__ == "__main__" :
 	testdata = argv[4]
 	rslt = argv[5]
 
-	while True :
-		if njobs > cpu_count() :
-			exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's number of CPU is %d." %cpu_count())
-		elif njobs == cpu_count() :
-			print("Warning: your chose number of jobs and your PC's number of CPU are same.\nWould you agree that this script continues the processing?")
+	if njobs > cpu_count() :
+		exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's number of CPU is %d." %cpu_count())
+	
+	elif njobs == cpu_count() :
+		print("Warning: your chose number of jobs and your PC's number of CPU are same.\nWould you agree that this script continues the processing?")
+		
+		while True :
 			key = input("[y / n] >>>")
 
 			if key == "y" :
@@ -290,8 +285,8 @@ if __name__ == "__main__" :
 					continue
 			else :
 				continue
-		else :
-			break
 
 	clf = Classification(njobs, config_json, traindata, testdata, rslt)
 	clf.main()
+
+	exit("script: done")
