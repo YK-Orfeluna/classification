@@ -1,7 +1,7 @@
 best parameter:
 {'C': 2, 'gamma': 0.1, 'kernel': 'rbf'}
 best accuracy: 0.98
-SD of accuracy: 0.0541602560309
+SD of accuracy: 0.0791622805803
 confusion matrix:
 [[25  0  0]
  [ 0 24  1]
