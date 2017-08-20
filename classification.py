@@ -104,7 +104,7 @@ class Classification() :
 		self.param = config["param"]
 
 
-		print("done: read config-file")
+		print("done: read %s" %config_json)
 
 
 	def load_dataset(self, traindata, testdata) :

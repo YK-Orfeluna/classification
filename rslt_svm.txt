@@ -1,0 +1,20 @@
+best parameter:
+{'C': 2, 'gamma': 0.1, 'kernel': 'rbf'}
+best accuracy: 0.98
+SD of accuracy: 0.0541602560309
+confusion matrix:
+[[25  0  0]
+ [ 0 24  1]
+ [ 0  4 21]]
+Result:
+             precision    recall  f1-score   support
+
+        0.0       1.00      1.00      1.00        25
+        1.0       0.86      0.96      0.91        25
+        2.0       0.95      0.84      0.89        25
+
+avg / total       0.94      0.93      0.93        75
+
+Precision: 0.94
+Recall: 0.93
+F-measure: 0.93
