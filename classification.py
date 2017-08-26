@@ -2,7 +2,7 @@
 
 
 import json
-from os.path import splitext
+from os.path import splitext, exists
 from time import ctime
 
 import numpy as np
@@ -18,6 +18,13 @@ from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
 
 from bayesian_optimizer import BayesianOptimizer
+
+
+from sys import version_info
+if version_info[0] == 2 :
+	from commands import getoutput
+elif version_info[0] == 3 :
+	from subprocess import getoutput
 
 
 KNN = "KNN"
@@ -41,13 +48,13 @@ def read_data(filename) :					# ファイル読み込み（csv/tsvに限る）
 	else :
 		exit("Error: this script can read CSV or TSV file only.")
 
-	data = df.values[:, :-1].copy()			# 最後の1行以外をデータセットにする
-	label = df.values[:, -1].copy()			# 最後の1行をラベルにする
+	data = df.values[:, :-1]			# 最後の1行以外をデータセットにする
+	label = df.values[:, -1]			# 最後の1行をラベルにする
 
 	return data, label
 
 class Classification() :
-	def __init__(self, njobs, config_json, traindata, testdata, rslt) :
+	def __init__(self, njobs, config_json, traindata, testdata, outdir) :
 
 		self.njobs = int(round(njobs, 0))
 
@@ -69,8 +76,14 @@ class Classification() :
 		self.load_config(config_json)
 
 
-		self.rslt = rslt
-		self.fd = open(rslt+".txt", "w")
+		if outdir[-1] == "/" :
+			self.outdir = outdir[: -1]
+		else :
+			self.outdir = outdir
+
+		if not exists(self.outdir) :
+			getoutput("mkdir %s" %self.outdir)
+			print("mkdir %s" %self.outdir)
 
 
 		self.best_clf = None
@@ -82,24 +95,26 @@ class Classification() :
 		else :
 			exit("Error: this script can read JSON-file as config-file.\nYou should choose JSON-file.")
 
-
-		if config["method"] == SVM or config["method"] == KNN or config["method"] == Kmeans or config["method"] == GMM :
-			self.method = config["method"]		# 分類手法の読み込み
+		method = config["method"]
+		if method == SVM or method == KNN or method == Kmeans or method == GMM :
+			self.method = method		# 分類手法の読み込み
 		else :
 			exit("Error: your chose method('%s') is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'.\nYou chose %s" \
-				%(self.method, SVM, KNN, Kmeans, GMM))
+				%(method, SVM, KNN, Kmeans, GMM))
 
 
-		if config["K"] == auto :					# "auto"の場合，サンプル数から自動的にCrossValidationの回数を決める
+		cv = config["K"]
+		if cv == auto :					# "auto"の場合，サンプル数から自動的にCrossValidationの回数を決める
 			self.cv = k(self.gs_data.shape[0])
 		else :
-			self.cv = int(config["K"])
+			self.cv = int(cv)
 
-		if config["evaluation"] == CV or config["evaluation"] == Bayes :
-			self.eval = config["evaluation"]
+		evaluation = config["evaluation"]
+		if evaluation == CV or evaluation == Bayes :
+			self.eval = evaluation
 		else :
 			exit("Error: your chose CV-method('%s') is not supported by this script\nYou should choose '%s' or '%s'" \
-				%(config["evaluation"], CV, Bayes))
+				%(evaluation, CV, Bayes))
 
 
 		self.param = config["param"]
@@ -146,30 +161,27 @@ class Classification() :
 
 		gs_result = pd.DataFrame(gs.cv_results_)			# CrossValidationの結果
 		if debug :
-			gs_result.to_csv("%s_GS.csv" %self.rslt)
+			gs_result.to_csv("%s/gridsearch.csv" %self.outdir)
 
 
 		best_param = gs.best_params_						# 最良平均正解率の時のパラメータ
 		if debug :
-			self.fd.write("best parameter:\n%s\n" %best_param)
 			print("best parameter:\t%s" %best_param)
 
 		accuracy = gs.best_score_							# 最良平均正解率
 		if debug :
-			self.fd.write("best accuracy: %s\n" %accuracy)
-			print("best accuracy:\t%s" %accuracy)
+			print("best test accuracy:\t%s" %accuracy)
 
 		index = gs.best_index_
 		accuracy_SD = gs_result["std_test_score"][index]	# 最良平均正解率の標準偏差（SD）
 		
 		if debug :
-			self.fd.write("SD of accuracy: %s\n" %accuracy_SD)
-			print("SD of accuracy:\t%s\n" %accuracy_SD)
+			print("SD of test accuracy:\t%s\n" %accuracy_SD)
 
 		self.best_clf = gs.best_estimator_					# 最良平均正解率のモデル
 		if debug :
 			print(self.best_clf, "\n")
-			joblib.dump(self.best_clf, "%s.pkl" %self.rslt)			# pklファイルとして分類器を出力する
+			joblib.dump(self.best_clf, "%s/clf.pkl" %self.outdir)			# pklファイルとして分類器を出力する
 
 		return accuracy
 
@@ -180,6 +192,7 @@ class Classification() :
 
 		predict = clf.predict(self.test_data)
 		matrix = confusion_matrix(self.test_label, predict)			# 混合行列
+		matrix = matrix.astype(np.int64)
 		report = classification_report(self.test_label, predict)	# 混合行列を基にしたPresicion, Recall, F-measure
 
 		print("confusion matrix:")
@@ -187,10 +200,12 @@ class Classification() :
 		print("Result:")
 		print(report)
 
-		self.fd.write("confusion matrix:\n%s\n" %matrix)
+		np.savetxt("%s/confusion_matrix.csv" %self.outdir, matrix, delimiter=",")
+		
+		with open("%s/report.txt" %self.outdir, "w") as fd :
+			fd.write(report)
 
-		self.fd.write("Result:\n%s\n" %report)
-
+		"""
 		reports = report.strip().split()
 		precision = float(reports[-4])
 		recall = float(reports[-3])
@@ -200,6 +215,7 @@ class Classification() :
 		self.fd.write("Precision: %s\n" %precision)
 		self.fd.write("Recall: %s\n" %recall)
 		self.fd.write("F-measure: %s\n" %f1)
+		"""
 
 	def bayesian(self) :
 		for p1 in self.param :
@@ -236,8 +252,6 @@ class Classification() :
 
 		else :
 			exit()
-
-		self.fd.close()
 
 if __name__ == "__main__" :
 	
@@ -290,4 +304,4 @@ if __name__ == "__main__" :
 	clf = Classification(njobs, config_json, traindata, testdata, rslt)
 	clf.main()
 
-	exit("script: done")
+	exit("[%s]\nscript: done" %ctime())

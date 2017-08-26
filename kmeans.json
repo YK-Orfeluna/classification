@@ -1,6 +1,7 @@
 {
 	"method": 		"Kmeans",
-	"K":			20,
+	"K":			50,
+	"evaluation":	"CV",
 	"param":		{
 						"n_clusters":		[3],
 						"tol":				[1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
