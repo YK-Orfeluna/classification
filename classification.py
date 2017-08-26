@@ -3,6 +3,7 @@
 
 import json
 from os.path import splitext
+from time import ctime
 
 import numpy as np
 import pandas as pd
@@ -92,7 +93,7 @@ class Classification() :
 		if config["K"] == auto :					# "auto"の場合，サンプル数から自動的にCrossValidationの回数を決める
 			self.cv = k(self.gs_data.shape[0])
 		else :
-			self.cv = int(round(config["K"], 0))
+			self.cv = int(config["K"])
 
 		if config["evaluation"] == CV or config["evaluation"] == Bayes :
 			self.eval = config["evaluation"]
@@ -132,7 +133,7 @@ class Classification() :
 
 	def crossvalidation(self, param=None, debug=True) :
 		if debug :
-			print("start K-fold Cross Validation(K = %d)\n" %self.cv)
+			print("[%s]\nstart K-fold Cross Validation(K = %d)\n" %(ctime(), self.cv))
 
 
 		if param == None :
