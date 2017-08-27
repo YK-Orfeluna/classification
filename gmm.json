@@ -1,6 +1,7 @@
 {
 	"method": 		"GMM",
-	"K":			20,
+	"K":			50,
+	"evaluation":	"CV",
 	"param":		{
 						"n_components":		[3],
 						"covariance_type":	["full", "tied", "diag", "spherical"],

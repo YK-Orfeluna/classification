@@ -17,7 +17,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
 
-from bayesian_optimizer import BayesianOptimizer
+#from bayesian_optimizer import BayesianOptimizer
 
 
 from sys import version_info
@@ -216,7 +216,7 @@ class Classification() :
 		self.fd.write("Recall: %s\n" %recall)
 		self.fd.write("F-measure: %s\n" %f1)
 		"""
-
+	"""
 	def bayesian(self) :
 		for p1 in self.param :
 			bo = BayesianOptimizer(p1)
@@ -229,7 +229,7 @@ class Classification() :
 			print(bayes_rslt)
 			self.fd.write(bayes_rslt)
 			self.fd.write("\n")
-
+	"""
 
 	def main(self) :
 		if self.method == KNN :
@@ -247,8 +247,8 @@ class Classification() :
 			self.crossvalidation()
 			self.classification()
 
-		elif self.eval == Bayes :
-			self.bayesian()
+		#elif self.eval == Bayes :
+		#	self.bayesian()
 
 		else :
 			exit()
@@ -283,7 +283,10 @@ if __name__ == "__main__" :
 		print("Warning: your chose number of jobs and your PC's number of CPU are same.\nWould you agree that this script continues the processing?")
 		
 		while True :
-			key = input("[y / n] >>>")
+			if version_info[0] == 3 :
+				key = input("[y / n] >>>")
+			elif version_info[0] == 2 :
+				key = raw_input("[y / n] >>>")
 
 			if key == "y" :
 				break
