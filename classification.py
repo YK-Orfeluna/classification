@@ -88,6 +88,8 @@ class Classification() :
 
 		self.best_clf = None
 
+		self.fd = open("%s/rslt.txt" %outdir, "w")
+
 	def load_config(self, config_json) :			# 設定用のjsonファイルを読み込む
 		if splitext(config_json)[1] == ".json" :
 			with open(config_json, "r") as fd:
@@ -167,16 +169,19 @@ class Classification() :
 		best_param = gs.best_params_						# 最良平均正解率の時のパラメータ
 		if debug :
 			print("best parameter:\t%s" %best_param)
+			self.fd.write("best parameter:\n%s\n" %best_param)
 
 		accuracy = gs.best_score_							# 最良平均正解率
 		if debug :
 			print("best test accuracy:\t%s" %accuracy)
+			self.fd.write("best test accuracy: \t%s\n" %accuracy)
 
 		index = gs.best_index_
 		accuracy_SD = gs_result["std_test_score"][index]	# 最良平均正解率の標準偏差（SD）
 		
 		if debug :
 			print("SD of test accuracy:\t%s\n" %accuracy_SD)
+			self.fd.write("SD of test accuracy:\t%s\n" %accuracy_SD)
 
 		self.best_clf = gs.best_estimator_					# 最良平均正解率のモデル
 		if debug :
@@ -192,7 +197,7 @@ class Classification() :
 
 		predict = clf.predict(self.test_data)
 		matrix = confusion_matrix(self.test_label, predict)			# 混合行列
-		matrix = matrix.astype(np.int64)
+		matrix = matrix.astype(np.str)
 		report = classification_report(self.test_label, predict)	# 混合行列を基にしたPresicion, Recall, F-measure
 
 		print("confusion matrix:")
@@ -200,10 +205,9 @@ class Classification() :
 		print("Result:")
 		print(report)
 
-		np.savetxt("%s/confusion_matrix.csv" %self.outdir, matrix, delimiter=",")
+		np.savetxt("%s/confusion_matrix.csv" %self.outdir, matrix, delimiter=",", fmt="%s")
 		
-		with open("%s/report.txt" %self.outdir, "w") as fd :
-			fd.write(report)
+		self.fd.write("%s" %report)
 
 		"""
 		reports = report.strip().split()
@@ -252,6 +256,8 @@ class Classification() :
 
 		else :
 			exit()
+
+		self.fd.close()
 
 if __name__ == "__main__" :
 	
