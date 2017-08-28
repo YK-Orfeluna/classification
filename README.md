@@ -32,3 +32,4 @@
 	+ ただし，数が大きすぎると，sklearn内部のエラーが発生する可能性がある
 * "param": グリッドサーチのパラメータ群
 	+ 詳しくは[公式リファレンス]( http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html)を参照
+	+ もしくは，記入例としてリポジトリ内の各jsonファイルを参照
