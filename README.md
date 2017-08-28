@@ -16,12 +16,12 @@
 	+ ただし，教師ラベルはなしで
 
 ### 出力用のjsonファイルについて
-	* "method": 分類手法
-		+ 現在対応しているもの（KNN, SVM, KMeans, GMM）
-	* "evaluation": 評価手法
-		+ 現在対応しているもの（CV）
-	* "K": Cross Validationの回数
-		+ 任意の整数値 or auto
-		+ ただし，数が大きすぎると，sklearn内部のエラーが発生する可能性がある
-	* "param": グリッドサーチのパラメータ群
-		+ 詳しくは[公式リファレンス]( http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html)を参照
+* "method": 分類手法
+	+ 現在対応しているもの（KNN, SVM, KMeans, GMM）
+* "evaluation": 評価手法
+	+ 現在対応しているもの（CV）
+* "K": Cross Validationの回数
+	+ 任意の整数値 or auto
+	+ ただし，数が大きすぎると，sklearn内部のエラーが発生する可能性がある
+* "param": グリッドサーチのパラメータ群
+	+ 詳しくは[公式リファレンス]( http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html)を参照
