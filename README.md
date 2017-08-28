@@ -15,7 +15,14 @@
 * 学習データは，教師データ同様の形式で
 	+ ただし，教師ラベルはなしで
 
-### 出力用のjsonファイルについて
+#### 出力ディレクトリについて
+ディレクトリ内には，以下のファイルが出力される
+* グリッドサーチ結果の，gridsearch.csv
+* 最良パラメータをバイナリ化した，clf.pkl
+* 混合行列を出力した，confusion_matrix.csv
+* 最良パラメータやPresicion, Recall, F-measureを記載した，rslt.txt
+
+####  出力用のjsonファイルについて
 * "method": 分類手法
 	+ 現在対応しているもの（KNN, SVM, KMeans, GMM）
 * "evaluation": 評価手法
