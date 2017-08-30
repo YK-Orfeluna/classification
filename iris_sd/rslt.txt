@@ -1,0 +1,11 @@
+best parameter:
+{'gamma': 5, 'C': 5, 'kernel': 'rbf'}
+best test accuracy: 	0.986666666667
+SD of test accuracy:	0.0933333333333
+             precision    recall  f1-score   support
+
+        0.0       1.00      1.00      1.00        25
+        1.0       0.93      1.00      0.96        25
+        2.0       1.00      0.92      0.96        25
+
+avg / total       0.98      0.97      0.97        75
