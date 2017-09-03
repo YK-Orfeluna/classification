@@ -282,10 +282,15 @@ if __name__ == "__main__" :
 	testdata = argv[4]
 	rslt = argv[5]
 
-	if njobs > cpu_count() :
-		exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's number of CPU is %d." %cpu_count())
+	n_CPU = cpu_count()
+	if njobs == -1 :
+		njobs = n_CPU
+	elif njobs < -1 :
+		njobs = n_CPU + (njobs + 1)
+	elif njobs > n_CPU :
+		exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's number of CPU is %d." %n_CPU)
 	
-	elif njobs == cpu_count() :
+	elif njobs == n_CPU :
 		print("Warning: your chose number of jobs and your PC's number of CPU are same.\nWould you agree that this script continues the processing?")
 		
 		while True :
