@@ -33,3 +33,9 @@
 * "param": グリッドサーチのパラメータ群
 	+ 詳しくは[公式リファレンス]( http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html)を参照
 	+ もしくは，記入例としてリポジトリ内の各jsonファイルを参照
+
+#### nomalization.pyについて
+入力と指定した特徴量ファイルを正規化する
+* $1: 読み込む特徴量ファイル（CSV or TSV）
+* $2: 正規化手法（1=加算平均が0，分散が1になるようにする，2=偏差値にする）
+* $3: 出力する特徴量ファイル名（CSV or TSV）

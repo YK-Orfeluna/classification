@@ -1,5 +1,5 @@
 best parameter:
-{'kernel': 'rbf', 'C': 1, 'gamma': 0.1}
+{'C': 1, 'gamma': 0.1, 'kernel': 'rbf'}
 best test accuracy: 	0.973333333333
 SD of test accuracy:	0.112348663642
              precision    recall  f1-score   support
