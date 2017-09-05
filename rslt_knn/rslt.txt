@@ -1,0 +1,11 @@
+best parameter:
+{'n_neighbors': 8, 'weights': 'uniform', 'leaf_size': 10}
+best test accuracy: 	0.973333333333
+SD of test accuracy:	0.0904310664417
+             precision    recall  f1-score   support
+
+        0.0       1.00      1.00      1.00        25
+        1.0       0.96      0.96      0.96        25
+        2.0       0.96      0.96      0.96        25
+
+avg / total       0.97      0.97      0.97        75
