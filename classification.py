@@ -121,8 +121,7 @@ class Classification() :
 
 		self.param = config["param"]
 
-
-		print("done: read %s" %config_json)
+		print("[%s]done: read %s" %(ctime(), config_json))
 
 
 	def load_dataset(self, traindata, testdata) :
@@ -138,6 +137,8 @@ class Classification() :
 			self.test_data = data[1::2, :].copy()
 			self.test_label = label[1::2].copy()
 
+			print("[%s]\ndone: read %s, %s" %(ctime(), traindata, testdata))
+
 		else :
 			self.train_data, self.train_label = read_data(traindata)		# 学習データの読み込み
 			self.test_data, self.test_label = read_data(testdata)			# テストデータの読み込み
@@ -145,12 +146,11 @@ class Classification() :
 			self.gs_data = self.train_data.copy()
 			self.gs_label = self.train_data.copy()
 
-
-		print("done: read datasets")
+			print("[%s]\ndone: read %s" %(ctime(), traindata))
 
 	def crossvalidation(self, param=None, debug=True) :
 		if debug :
-			print("[%s]\nstart K-fold Cross Validation(K = %d)\n" %(ctime(), self.cv))
+			print("[%s]\nstart %d-fold Cross Validation\n" %(ctime(), self.cv))
 
 
 		if param == None :
@@ -283,12 +283,8 @@ if __name__ == "__main__" :
 	rslt = argv[5]
 
 	n_CPU = cpu_count()
-	if njobs == -1 :
-		njobs = n_CPU
-	elif njobs < -1 :
-		njobs = n_CPU + (njobs + 1)
-	elif njobs > n_CPU :
-		exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's number of CPU is %d." %n_CPU)
+	if njobs > n_CPU :
+		exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's nCPU is %d." %n_CPU)
 	
 	elif njobs == n_CPU :
 		print("Warning: your chose number of jobs and your PC's number of CPU are same.\nWould you agree that this script continues the processing?")
