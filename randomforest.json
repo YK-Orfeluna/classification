@@ -1,0 +1,8 @@
+{
+	"method": 		"RF",
+	"K":			50,
+	"evaluation":	"CV",
+	"param":		{
+						"n_estimators":		[100000],
+					}
+}

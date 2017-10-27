@@ -31,6 +31,7 @@ KNN = "KNN"
 SVM = "SVM"
 Kmeans = "Kmeans"
 GMM = "GMM"
+RF = "RF"
 
 CV = "CV"
 Bayes = "Bayes"
@@ -98,11 +99,11 @@ class Classification() :
 			exit("Error: this script can read JSON-file as config-file.\nYou should choose JSON-file.")
 
 		method = config["method"]
-		if method == SVM or method == KNN or method == Kmeans or method == GMM :
+		if method == SVM or method == KNN or method == Kmeans or method == GMM or method == RF:
 			self.method = method		# 分類手法の読み込み
 		else :
 			exit("Error: your chose method('%s') is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'.\nYou chose %s" \
-				%(method, SVM, KNN, Kmeans, GMM))
+				%(method, SVM, KNN, Kmeans, GMM, RF))
 
 
 		cv = config["K"]
