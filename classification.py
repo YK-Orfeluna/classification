@@ -16,6 +16,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
+from sklearn.ensemble import RandomForestClassifier
 
 #from bayesian_optimizer import BayesianOptimizer
 
@@ -245,6 +246,8 @@ class Classification() :
 			self.clf = KMeans()
 		elif self.method == GMM :
 			self.clf = GaussianMixture()
+		elif self.method == RF :
+			self.clf = RandomForestClassifier()
 		else :
 			exit()
 

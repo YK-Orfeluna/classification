@@ -3,6 +3,6 @@
 	"K":			50,
 	"evaluation":	"CV",
 	"param":		{
-						"n_estimators":		[100000],
+						"n_estimators":		[100000]
 					}
 }
