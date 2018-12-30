@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import tkinter
+from tkinter import Entry, Label, Button, filedialog, END, \
+					Radiobutton, IntVar, messagebox, Checkbutton, BooleanVar, \
+					CENTER
+from multiprocessing import cpu_count
 
 import json
 from os.path import splitext, exists
@@ -42,13 +47,27 @@ def k(n) :
 	out =  (1 + np.log(n) / np.log(2)) * 4
 	return int(round(out, 0))
 
-def read_data(filename) :					# ファイル読み込み（csv/tsvに限る）
-	if splitext(filename)[1] == ".csv" :
-		df = pd.read_csv(filename, header=None, index_col=None)
-	elif splitext(filename)[1] == ".tsv" :
-		df = pd.read_csv(filename, header=None, index_col=None, delimiter="\t")
+def read_data(filename, flagH) :					# ファイル読み込み（csv/tsvに限る）
+	if splitext(filename)[1]==".csv" :
+		delimiter = ","
+	elif splitext(filename)[1]==".tsv" :
+		delimiter = "\t"
 	else :
-		exit("Error: this script can read CSV or TSV file only.")
+		messagebox.showwarning("WARNING", "Your chosed train/test data is not CSV/TSV-file.")
+		return 0
+
+	if flagH :
+		H = 0
+	else :
+		H = None
+
+	try :
+		df = pd.read_csv(filename, header=H, delimiter=delimiter)
+	except OSError :
+		df = pd.read_csv(filename, header=H, delimiter=delimiter, engine="python")
+	except FileNotFoundError :
+		messagebox.showwarning("WARNING", "Your chosed train/test data is not found.")
+		return 0
 
 	data = df.values[:, :-1]			# 最後の1行以外をデータセットにする
 	label = df.values[:, -1]			# 最後の1行をラベルにする
@@ -93,33 +112,37 @@ class Classification() :
 		self.fd = open("%s/rslt.txt" %outdir, "w")
 
 	def load_config(self, config_json) :			# 設定用のjsonファイルを読み込む
-		if splitext(config_json)[1] == ".json" :
-			with open(config_json, "r") as fd:
-				config = json.load(fd)				# config用のjsonを読み込む
-		else :
-			exit("Error: this script can read JSON-file as config-file.\nYou should choose JSON-file.")
+		try :
+			with open(config_json, "r") as fd :
+				config = json.load(fd)
+		except FileNotFoundError :
+			messagebox.showwarning("WARNING", "Your chosed json-file is not found.")
+			return 0
 
 		method = config["method"]
 		if method == SVM or method == KNN or method == Kmeans or method == GMM or method == RF:
 			self.method = method		# 分類手法の読み込み
 		else :
-			exit("Error: your chose method('%s') is not supported by this sciprt.\nYou should choose '%s' or '%s' or '%s' or '%s'.\nYou chose %s" \
-				%(method, SVM, KNN, Kmeans, GMM, RF))
-
+			supported = [SVM, KNN, Kmeans, GMM, RF]
+			messagebox.showwarning("WARNING", "Your chosed method (%s) is not supported on this script.\nSupported: %s" %(method, supported))
+			return 0
 
 		cv = config["K"]
 		if cv == auto :					# "auto"の場合，サンプル数から自動的にCrossValidationの回数を決める
 			self.cv = k(self.gs_data.shape[0])
 		else :
-			self.cv = int(cv)
+			try :
+				self.cv = int(cv)
+			except ValueError :
+				messagebox.showwarning("WARNING", "Your have to fill in \"K in JSON\" as integer or \"auto\"")
+				return 0
 
 		evaluation = config["evaluation"]
-		if evaluation == CV or evaluation == Bayes :
+		if evaluation == CV:
 			self.eval = evaluation
 		else :
-			exit("Error: your chose CV-method('%s') is not supported by this script\nYou should choose '%s' or '%s'" \
-				%(evaluation, CV, Bayes))
-
+			messagebox.showwarning("WARNING", "your chosed CV-method (%s) is not supported on this script.You have to choose %s" %(evaluation, CV))
+			return 0
 
 		self.param = config["param"]
 
@@ -128,7 +151,7 @@ class Classification() :
 
 	def load_dataset(self, traindata, testdata) :
 		if testdata == -1 or testdata == "-1" :								# testdataが-1だった場合，traindataを分割する
-			data, label = read_data(traindata)
+			data, label = read_data(traindata, trainH.get())
 
 			self.gs_data = data.copy()
 			self.gs_label = label.copy()
@@ -142,8 +165,8 @@ class Classification() :
 			print("[%s]\ndone: read %s, %s" %(ctime(), traindata, testdata))
 
 		else :
-			self.train_data, self.train_label = read_data(traindata)		# 学習データの読み込み
-			self.test_data, self.test_label = read_data(testdata)			# テストデータの読み込み
+			self.train_data, self.train_label = read_data(traindata, trainH.get())		# 学習データの読み込み
+			self.test_data, self.test_label = read_data(testdata, testH.get())			# テストデータの読み込み
 
 			self.gs_data = self.train_data.copy()
 			self.gs_label = self.train_data.copy()
@@ -211,32 +234,6 @@ class Classification() :
 		
 		self.fd.write("%s" %report)
 
-		"""
-		reports = report.strip().split()
-		precision = float(reports[-4])
-		recall = float(reports[-3])
-		f1 = float(reports[-2])
-
-		print("Precision, Recall, F-measure: %s, %s, %s" %(precision, recall, f1))
-		self.fd.write("Precision: %s\n" %precision)
-		self.fd.write("Recall: %s\n" %recall)
-		self.fd.write("F-measure: %s\n" %f1)
-		"""
-	"""
-	def bayesian(self) :
-		for p1 in self.param :
-			bo = BayesianOptimizer(p1)
-
-			for p2 in bo.supply_next_param() :
-				y = self.classification(param=p1, debug=False)
-				bo.report(y)
-			bayes_rslt = bo.best_results()
-
-			print(bayes_rslt)
-			self.fd.write(bayes_rslt)
-			self.fd.write("\n")
-	"""
-
 	def main(self) :
 		if self.method == KNN :
 			self.clf = KNeighborsClassifier()
@@ -255,67 +252,236 @@ class Classification() :
 			self.crossvalidation()
 			self.classification()
 
-		#elif self.eval == Bayes :
-		#	self.bayesian()
-
 		else :
 			exit()
 
 		self.fd.close()
 
-if __name__ == "__main__" :
+def readData(filename, H=None) :
+	ext = splitext(filename)[1]
+	if ext==".csv" :
+		delimiter=","
+	elif ext==".tsv" :
+		delimiter="\t"
+
+	try :
+		df = pd.read_csv(filename, header=H, delimiter=delimiter,)
+	except OSError :
+		df = pd.read_csv(filename, header=H, delimiter=delimiter, engine="python")
+	return df
+
+def _getJSON() :
+	json_name = filedialog.askopenfilename(title="Choose JSON-file", initialdir=".", filetypes=[("JSON", "*.json")])
+	if json_name!="":
+		entryJSON.delete(0, END)
+		entryJSON.insert(END, json_name)
+
+def _getTrain() :
+	train_name = filedialog.askopenfilename(title="Choose CSV/TSV-file", initialdir=".", filetypes=[("CSV", "*.csv"), ("TSV", "*.tsv")])
+	if train_name!="":
+		entryTrain.delete(0, END)
+		entryTrain.insert(END, train_name)
+
+def _getTest() :
+	test_name = filedialog.askopenfilename(title="Choose CSV/TSV-file", initialdir=".", filetypes=[("CSV", "*.csv"), ("TSV", "*.tsv")])
+	if test_name!="":
+		entryTest.delete(0, END)
+		entryTest.insert(END, test_name)
+
+def _normalization() :
+	filename = entryTrain.get()
+	caseN = normV.get()
+	flagH = trainH.get()
+
+	if flagH:
+		H = 0
+	else :
+		H = None
+
+	if splitext(filename)[1]==".csv" :
+		delimiter = ","
+	elif splitext(filename)[1]==".tsv" :
+		delimiter = "\t"
+	else :
+		messagebox.showwarning("WARNING", "Your chosed file is not CSV/TSV-file.")
+		return 0
+
+	try :
+		df = pd.read_csv(filename, header=H, delimiter=delimiter)
+	except OSError :
+		df = pd.read_csv(filename, header=H, delimiter=delimiter, engine="python")
+	except FileNotFoundError :
+		messagebox.showwarning("WARNING", "Your chosed CSV/TSV-file is not found.")
+
+	data = df.values
+
+	X = data[:, :-1]
+	y = np.array([data[:, -1]]).T
+
+	if caseN==0 :
+		mean = np.mean(X, axis=0)
+		std = np.std(X, axis=0, ddof=1)
+		normalized = (X-mean) / std
+	if caseN==1 :
+		min_ = np.amin(X, axis=0)
+		max_ = np.amax(X, axis=0)
+		normalized = (X-min_) / (max_-min_) 
 	
-	"""
-	$1:	njobs
-	$2:	config_json	("*.json")
-	$3:	traindata	("*.csv" or "*.tsv", headerとindexはなし)
-	$4:	testdata	("*.csv" or "*.tsv", headerとindexはなし)
-			traindataを分割してtestdataとしたい場合，$4に-1を入力する
-	$5:	result_name	(without ext)
-	"""
+	outdata = np.append(normalized, y, axis=1)
 
-	from sys import argv
-	from multiprocessing import cpu_count
+	if flagH :
+		header = np.array([df.columns.values])
+		outdata = np.append(header, outdata, axis=0)
 
-	if len(argv) != 6 :
-		exit("Error: args [njobs] [config-file (JSON)] [traindata(CSV or TSV)] [testdata(CSV or TSV or -1)] [result name(without ext)]")
+	ext = splitext(filename)[1]
+	outname = splitext(filename)[0] + "_norm" + ext
+	if ext==".csv" :
+		delimiter = ","
+	elif ext==".tsv" :
+		delimiter = "\t"
+	np.savetxt(outname, outdata, fmt="%s", delimiter=delimiter)
 
-	njobs = int(argv[1])
-	config_json = argv[2]
-	traindata = argv[3]
-	testdata = argv[4]
-	rslt = argv[5]
+	messagebox.showinfo("INFORMATIONS", "%s\n is converted to\n%s" %(filename, outname))
+	entryTrain.delete(0, END)
+	entryTrain.insert(END, outname)
 
-	n_CPU = cpu_count()
-	if njobs > n_CPU :
-		exit("Error: your chose number of jobs is larger than your PC's number of CPU/.\nYour PC's nCPU is %d." %n_CPU)
-	
-	elif njobs == n_CPU :
-		print("Warning: your chose number of jobs and your PC's number of CPU are same.\nWould you agree that this script continues the processing?")
-		
-		while True :
-			if version_info[0] == 3 :
-				key = input("[y / n] >>>")
-			elif version_info[0] == 2 :
-				key = raw_input("[y / n] >>>")
+def _main() :
+	try :
+		njobs = int(entryJob.get())
+		if njobs>Ncpu :
+			messagebox.showwarning("WARNING", "Your choosed \"Numnber of jobs\" is larger than this PC\'s \"Number of CPU\"")
+			entryJob.delete(0, END)
+			entryJob.insert(END, "1")
+			return 0
+	except ValueError :
+		messagebox.showwarning("WARNING", "You have to fill out \"Number of jobs\" as integer.")
+		return 0
 
-			if key == "y" :
-				break
-			if key == "n" :
-				print("Do you want to change the number of jobs?")
-				key = input("[y / n] >>>")
+	jsonname = entryJSON.get()
+	if jsonname=="" :
+		messagebox.showwarning("WARNING", "You have not choose json-file yet.")
+		return 0
 
-				if key == "y" :
-					print("Input the number of jobs.")
-					njobs = int(input(">>>"))
-				if key == "n" :
-					exit()
-				else :
-					continue
-			else :
-				continue
+	trainname = entryTrain.get()
+	if trainname=="" :
+		messagebox.showwarning("WARNING", "You have not choose train data yet.")
+		return 0
 
-	clf = Classification(njobs, config_json, traindata, testdata, rslt)
+	testname = entryTest.get()
+	if testname=="" :
+		if splitV.get() :
+			testname = -1
+		else :
+			messagebox.showwarning("WARNING", "You have not choose test data or check \"Split Train Data\"")
+			return 0
+
+	rslt = entryRslt.get()
+	if rslt=="" :
+		messagebox.showwarning("WARNING", "You have not fill out \"Result\'s Name\"")
+		return 0
+
+	clf = Classification(njobs, jsonname, trainname, testname, rslt)
 	clf.main()
 
-	exit("[%s]\nscript: done" %ctime())
+def _quit() :
+	root.destroy()
+	exit()
+
+if __name__ == "__main__" :
+	root = tkinter.Tk()
+	root.title("Classification")
+	root.geometry("500x500")
+
+	"""JSONファイルを選択する"""
+	labelJSON = Label(root, text="JSON-file\'s name")
+	labelJSON.place(x=10, y=40)
+
+	entryJSON = Entry(root, width=20)
+	entryJSON.place(x=150, y=40)
+
+	buttonJSON = Button(root, text="Choose JSON-file", command=_getJSON)
+	buttonJSON.place(x=300, y=40)
+
+	"""学習データを選択する"""
+	labelTrain = Label(root, text="Train Data (CSV/TSV)")
+	labelTrain.place(x=10, y=70)
+
+	entryTrain = Entry(root, width=20)
+	entryTrain.place(x=150, y=70)
+
+	buttonTrain = Button(root, text="Choose Train Data (CSV/TSV)", command=_getTrain)
+	buttonTrain.place(x=300, y=70)
+
+	trainH = BooleanVar()
+	trainH.set(False)
+
+	checkTrainH = Checkbutton(root, text="Header of Train Data")
+	checkTrainH.place(x=150, y=100)
+
+	"""学習データの正規化"""
+	normV = IntVar()
+	normV.set(0)
+
+	radioZ = Radiobutton(root, text="z-score", value=0, variable=normV)
+	radioZ.place(x=150, y=130)
+
+	radioM = Radiobutton(root, text="Min-Max", value=1, variable=normV)
+	radioM.place(x=250, y=130)
+
+	buttonNorm = Button(root, text="NORMALIZE", command=_normalization)
+	buttonNorm.place(x=350, y=130)
+
+	"""評価データを取得"""
+	labelTest = Label(root, text="Test Data (CSV/TSV)")
+	labelTest.place(x=10, y=160)
+
+	entryTest = Entry(root, width=20)
+	entryTest.place(x=150, y=160)
+
+	buttonTest = Button(root, text="Choose Test Data (CSV/TSV", command=_getTest)
+	buttonTest.place(x=300, y=160)
+
+	"""学習データを分割して評価データにする"""
+	splitV = BooleanVar()
+	splitV.set(False)
+
+	checkTest = Checkbutton(root, text="Split Train Data to Train/Test Data", variable=splitV)
+	checkTest.place(x=150, y=190)
+
+	labelSplit = Label(root, text="Ratio of Test Data (0.0-1.0)")
+	labelSplit.place(x=150, y=210)
+
+	entrySplit = Entry(root, width=5)
+	entrySplit.place(x=350, y=210)
+	entrySplit.insert(END, "0.3")
+
+	"""処理スレッド数を設定する"""
+	labelJob = Label(root, text="Number of Jobs")
+	labelJob.place(x=10, y=250)
+
+	entryJob = Entry(root, width=5)
+	entryJob.place(x=150, y=250)
+	entryJob.insert(END, "1")
+
+	Ncpu = cpu_count()
+	labelCPU = Label(root, text="Number of CPUs is \"%d\"" %Ncpu)
+	labelCPU.place(x=200, y=250)
+
+	"""結果名を設定する"""
+	labelRslt = Label(root, text="Result\'s Name\n(without extention)")
+	labelRslt.place(x=10, y=280)
+
+	entryRslt = Entry(root, width=20)
+	entryRslt.place(x=150, y=280)
+
+
+	"""処理開始"""
+	buttonMain = Button(root, text="Start Machine Learning", command=_main)
+	buttonMain.place(relx=0.5, y=350, anchor=CENTER)
+
+	buttonQuit = Button(root, text="EXIT", command=_quit)
+	buttonQuit.place(relx=0.5, y=400, anchor=CENTER)
+
+	root.mainloop()
+
+	exit()
