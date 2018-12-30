@@ -18,7 +18,7 @@ from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.externals import joblib
 from sklearn.ensemble import RandomForestClassifier
@@ -40,6 +40,7 @@ GMM = "GMM"
 RF = "RF"
 
 CV = "CV"
+#F = "fscore"
 Bayes = "Bayes"
 auto = "auto"
 
@@ -47,13 +48,13 @@ def k(n) :
 	out =  (1 + np.log(n) / np.log(2)) * 4
 	return int(round(out, 0))
 
-def read_data(filename, flagH) :					# ファイル読み込み（csv/tsvに限る）
+def read_data(filename, flagH, shuffle=False) :					# ファイル読み込み（csv/tsvに限る）
 	if splitext(filename)[1]==".csv" :
 		delimiter = ","
 	elif splitext(filename)[1]==".tsv" :
 		delimiter = "\t"
 	else :
-		messagebox.showwarning("WARNING", "Your chosed train/test data is not CSV/TSV-file.")
+		messagebox.showwarning("WARNING", "Your chosen train/test data is not CSV/TSV-file.")
 		return 0
 
 	if flagH :
@@ -65,29 +66,30 @@ def read_data(filename, flagH) :					# ファイル読み込み（csv/tsvに限�
 		df = pd.read_csv(filename, header=H, delimiter=delimiter)
 	except OSError :
 		df = pd.read_csv(filename, header=H, delimiter=delimiter, engine="python")
-	except FileNotFoundError :
-		messagebox.showwarning("WARNING", "Your chosed train/test data is not found.")
-		return 0
 
-	data = df.values[:, :-1]			# 最後の1行以外をデータセットにする
-	label = df.values[:, -1]			# 最後の1行をラベルにする
+	data = df.values
 
-	return data, label
+	if shuffle :
+		data = np.random.permutation(data)
+
+	X = df.values[:, :-1]			# 最後の1行以外をデータセットにする
+	y = df.values[:, -1]			# 最後の1行をラベルにする
+
+	return X, y
 
 class Classification() :
-	def __init__(self, njobs, config_json, traindata, testdata, outdir) :
+	def __init__(self, njobs, config_json, traindata, outdir) :
 
 		self.njobs = int(round(njobs, 0))
 
 
 		self.train_data = np.array([])
 		self.train_label = np.array([])
-		self.test_data = np.array([])
-		self.test_label = np.array([])
+
 		self.gs_data = np.array([])
 		self.gs_label = np.array([])
 
-		self.load_dataset(traindata, testdata)
+		self.load_dataset(traindata)
 
 
 		self.param = {}
@@ -116,7 +118,7 @@ class Classification() :
 			with open(config_json, "r") as fd :
 				config = json.load(fd)
 		except FileNotFoundError :
-			messagebox.showwarning("WARNING", "Your chosed json-file is not found.")
+			messagebox.showwarning("WARNING", "Your chosen json-file is not found.")
 			return 0
 
 		method = config["method"]
@@ -124,7 +126,7 @@ class Classification() :
 			self.method = method		# 分類手法の読み込み
 		else :
 			supported = [SVM, KNN, Kmeans, GMM, RF]
-			messagebox.showwarning("WARNING", "Your chosed method (%s) is not supported on this script.\nSupported: %s" %(method, supported))
+			messagebox.showwarning("WARNING", "Your chosen method (%s) is not supported on this script.\nSupported: %s" %(method, supported))
 			return 0
 
 		cv = config["K"]
@@ -138,40 +140,30 @@ class Classification() :
 				return 0
 
 		evaluation = config["evaluation"]
-		if evaluation == CV:
+		if evaluation==CV:
 			self.eval = evaluation
 		else :
-			messagebox.showwarning("WARNING", "your chosed CV-method (%s) is not supported on this script.You have to choose %s" %(evaluation, CV))
+			supported = [CV]
+			messagebox.showwarning("WARNING", "your chosen CV-method (%s) is not supported on this script.You have to choose %s" %(evaluation, supported))
 			return 0
 
 		self.param = config["param"]
 
-		print("[%s]done: read %s" %(ctime(), config_json))
+		print("[%s]\ndone: read %s" %(ctime(), config_json))
 
 
-	def load_dataset(self, traindata, testdata) :
-		if testdata == -1 or testdata == "-1" :								# testdataが-1だった場合，traindataを分割する
-			data, label = read_data(traindata, trainH.get())
+	def load_dataset(self, traindata) :
+		try :
+			data, label = read_data(traindata, trainH.get(), shuffle=True)
 
 			self.gs_data = data.copy()
 			self.gs_label = label.copy()
 
-			self.train_data = data[0::2, :].copy()
-			self.train_label = label[0::2].copy()
-
-			self.test_data = data[1::2, :].copy()
-			self.test_label = label[1::2].copy()
-
-			print("[%s]\ndone: read %s, %s" %(ctime(), traindata, testdata))
-
-		else :
-			self.train_data, self.train_label = read_data(traindata, trainH.get())		# 学習データの読み込み
-			self.test_data, self.test_label = read_data(testdata, testH.get())			# テストデータの読み込み
-
-			self.gs_data = self.train_data.copy()
-			self.gs_label = self.train_data.copy()
-
 			print("[%s]\ndone: read %s" %(ctime(), traindata))
+
+		except FileNotFoundError :
+			messagebox.showwarning("WARNING", "Your chosen file is not found.")
+			return 0
 
 	def crossvalidation(self, param=None, debug=True) :
 		if debug :
@@ -182,7 +174,7 @@ class Classification() :
 			param = self.param
 
 
-		gs = GridSearchCV(self.clf, param, cv=self.cv, n_jobs=self.njobs)
+		gs = GridSearchCV(self.clf, param, cv=self.cv, n_jobs=self.njobs, return_train_score=True)
 		gs.fit(self.gs_data, self.gs_label)
 
 
@@ -215,8 +207,8 @@ class Classification() :
 
 		return accuracy
 
-
 	def classification(self) :
+
 		clf = self.best_clf
 		clf.fit(self.train_data, self.train_label)
 
@@ -250,12 +242,11 @@ class Classification() :
 
 		if self.eval == CV :
 			self.crossvalidation()
-			self.classification()
-
-		else :
-			exit()
+			#self.classification()
 
 		self.fd.close()
+
+		print("[%s]\ndone processing" %ctime())
 
 def readData(filename, H=None) :
 	ext = splitext(filename)[1]
@@ -268,6 +259,9 @@ def readData(filename, H=None) :
 		df = pd.read_csv(filename, header=H, delimiter=delimiter,)
 	except OSError :
 		df = pd.read_csv(filename, header=H, delimiter=delimiter, engine="python")
+	except FileNotFoundError :
+		messagebox.showwarning("WARNING", "Your chosen file is not found.")
+		return 0
 	return df
 
 def _getJSON() :
@@ -303,7 +297,7 @@ def _normalization() :
 	elif splitext(filename)[1]==".tsv" :
 		delimiter = "\t"
 	else :
-		messagebox.showwarning("WARNING", "Your chosed file is not CSV/TSV-file.")
+		messagebox.showwarning("WARNING", "Your chosen file is not CSV/TSV-file.")
 		return 0
 
 	try :
@@ -311,7 +305,7 @@ def _normalization() :
 	except OSError :
 		df = pd.read_csv(filename, header=H, delimiter=delimiter, engine="python")
 	except FileNotFoundError :
-		messagebox.showwarning("WARNING", "Your chosed CSV/TSV-file is not found.")
+		messagebox.showwarning("WARNING", "Your chosen CSV/TSV-file is not found.")
 
 	data = df.values
 
@@ -367,20 +361,17 @@ def _main() :
 		messagebox.showwarning("WARNING", "You have not choose train data yet.")
 		return 0
 
-	testname = entryTest.get()
-	if testname=="" :
-		if splitV.get() :
-			testname = -1
-		else :
-			messagebox.showwarning("WARNING", "You have not choose test data or check \"Split Train Data\"")
-			return 0
+	# testname = entryTest.get()
+	# if testname=="" :
+	# 	if not splitV.get() :
+	# 		testname = -1
 
 	rslt = entryRslt.get()
 	if rslt=="" :
 		messagebox.showwarning("WARNING", "You have not fill out \"Result\'s Name\"")
 		return 0
 
-	clf = Classification(njobs, jsonname, trainname, testname, rslt)
+	clf = Classification(njobs, jsonname, trainname, rslt)
 	clf.main()
 
 def _quit() :
@@ -432,28 +423,28 @@ if __name__ == "__main__" :
 	buttonNorm.place(x=350, y=130)
 
 	"""評価データを取得"""
-	labelTest = Label(root, text="Test Data (CSV/TSV)")
-	labelTest.place(x=10, y=160)
+	# labelTest = Label(root, text="Test Data (CSV/TSV)")
+	# labelTest.place(x=10, y=160)
 
-	entryTest = Entry(root, width=20)
-	entryTest.place(x=150, y=160)
+	# entryTest = Entry(root, width=20)
+	# entryTest.place(x=150, y=160)
 
-	buttonTest = Button(root, text="Choose Test Data (CSV/TSV", command=_getTest)
-	buttonTest.place(x=300, y=160)
+	# buttonTest = Button(root, text="Choose Test Data (CSV/TSV", command=_getTest)
+	# buttonTest.place(x=300, y=160)
 
 	"""学習データを分割して評価データにする"""
-	splitV = BooleanVar()
-	splitV.set(False)
+	# splitV = BooleanVar()
+	# splitV.set(False)
 
-	checkTest = Checkbutton(root, text="Split Train Data to Train/Test Data", variable=splitV)
-	checkTest.place(x=150, y=190)
+	# checkTest = Checkbutton(root, text="Split Train Data to Train/Test Data", variable=splitV)
+	# checkTest.place(x=150, y=190)
 
-	labelSplit = Label(root, text="Ratio of Test Data (0.0-1.0)")
-	labelSplit.place(x=150, y=210)
+	# labelSplit = Label(root, text="Ratio of Test Data (0.0-1.0)")
+	# labelSplit.place(x=150, y=210)
 
-	entrySplit = Entry(root, width=5)
-	entrySplit.place(x=350, y=210)
-	entrySplit.insert(END, "0.3")
+	# entrySplit = Entry(root, width=5)
+	# entrySplit.place(x=350, y=210)
+	# entrySplit.insert(END, "0.25")
 
 	"""処理スレッド数を設定する"""
 	labelJob = Label(root, text="Number of Jobs")

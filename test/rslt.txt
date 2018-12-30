@@ -1,0 +1,4 @@
+best parameter:
+{'n_neighbors': 8, 'weights': 'uniform', 'leaf_size': 10}
+best test accuracy: 	0.9733333333333334
+SD of test accuracy:	0.09043106644167026
