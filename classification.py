@@ -174,9 +174,26 @@ class Classification() :
 			param = self.param
 
 
-		gs = GridSearchCV(self.clf, param, cv=self.cv, n_jobs=self.njobs, return_train_score=True)
-		gs.fit(self.gs_data, self.gs_label)
+		cntCV = 0
+		while True :
+			try :
+				gs = GridSearchCV(self.clf, param, cv=self.cv, n_jobs=self.njobs, return_train_score=True)
+				gs.fit(self.gs_data, self.gs_label)
+				break
+			except ValueError :
+				old_cv = self.cv
+				auto_cv = k(self.gs_data.shape[0])
 
+				if old_cv==auto_cv :
+					cntCV += 1
+
+				if cntCV==0 :
+					self.cv = auto_cv
+					cntCV += 1
+				else :
+					self.cv = int(self.cv * 0.9)
+					cntCV += 1
+				print("[%s]\n K of CV becomes smaller from %d to %d" %(ctime(), old_cv, self.cv))
 
 		gs_result = pd.DataFrame(gs.cv_results_)			# CrossValidationの結果
 		if debug :
@@ -247,6 +264,7 @@ class Classification() :
 		self.fd.close()
 
 		print("[%s]\ndone processing" %ctime())
+		messagebox.showinfo("done processing", "[%s]\nThe process is done. This is the best parameters.\n%s" %(ctime(), self.best_clf))
 
 def readData(filename, H=None) :
 	ext = splitext(filename)[1]

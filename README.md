@@ -1,41 +1,79 @@
 # classification.py
 
-## GridSearchによる機械学習のチューニング等
+## GridSearchによる機械学習のチューニングとK-fold CVによる精度検証
 
-### 引数
-* $1: njobs
-* $2: 設定用のjsonファイル
-* $3: 教師データ（CSV, TSVに限る）
-* $4: 学習データ（なければ，-1を指定することで，教師データを分割）
-* $5: 出力ディレクトリ（なければ，自動生成）
+### 使い方
 
-#### 教師・評価データについて
-* 教師データは，iris.csvを参考にする
-	+ 最終列が教師ラベル，それ以外は特徴量
-* 学習データは，教師データ同様の形式で
-	+ ただし，教師ラベルはなしで
+1. `classification.py`を実行すると，以下のような画面が出てくる
+2. **Choose JSON-file**，**Choose Train Data (CSV/TSV)**をそれぞれ選択する
+	- 詳細は下記
+3. **Number of Jobs**を決める（defaultは1）
+	- 横に使用しているPCの最大スレッド数が出てるので，それ以上にならないようにする
+4. **Result's Name**に結果を出力するディレクトリの名前を入力する
+	- ディレクトリはclassification.pyと同じディレクトリに作成される
+5. **Start Machine Learning**を押して，jsonファイルに記入されたパラメータでグリッドサーチとK-fold CVを実行する
+	- logはターミナル/コマンドプロンプトに生成される
 
-#### 出力ディレクトリについて
-ディレクトリ内には，以下のファイルが出力される
-* グリッドサーチ結果の，gridsearch.csv
-* 最良パラメータをバイナリ化した，clf.pkl
-* 混合行列を出力した，confusion_matrix.csv
-* 最良パラメータやPresicion, Recall, F-measureを記載した，rslt.txt
+![](./classification_gui.png)
 
-####  出力用のjsonファイルについて
-* "method": 分類手法
-	+ 現在対応しているもの（KNN, SVM, KMeans, GMM）
-* "evaluation": 評価手法
-	+ 現在対応しているもの（CV）
-* "K": Cross Validationの回数
-	+ 任意の整数値 or auto
-	+ ただし，数が大きすぎると，sklearn内部のエラーが発生する可能性がある
-* "param": グリッドサーチのパラメータ群
-	+ 詳しくは[公式リファレンス]( http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html)を参照
-	+ もしくは，記入例としてリポジトリ内の各jsonファイルを参照
+### jsonファイルの書式
 
-#### nomalization.pyについて
-入力と指定した特徴量ファイルを正規化する
-* $1: 読み込む特徴量ファイル（CSV or TSV）
-* $2: 正規化手法（1=加算平均が0，分散が1になるようにする，2=偏差値にする）
-* $3: 出力する特徴量ファイル名（CSV or TSV）
+サンプルデータが**JSON**ディレクトリに入っているので，それを参考にしてパラメータを設定する
+
+#### method
+
+- 機械学習の手法を指定する
+- 現在，以下のものに対応している
+	- SVM: support vector machine
+	- KNN: K-nearest neighbor algorithm
+	- Kmeans: k-means clustering
+	- GMM: gaussian mixture model
+	- RF: random forest
+
+#### evaluation
+
+現在，**CV**のみ対応（削除予定）
+
+#### K
+
+- K-fold CVの回数を指定する
+- 現在，以下のものに対応している
+	- auto: 学習用データの数に応じて自動で決定する
+	- 整数値
+
+#### param
+
+例えば，`knn.json`なら以下のようになっているが，これは，
+
+- *n_neighbors*は1から15
+- *weights*は*uniform*と*distance*
+- *leaf_size*は10, 20, 30, 40, 50
+
+をそれぞれグリッドサーチで検証する，ということ
+
+入力がなければデフォルト値で，`"weights":			["uniform"]`のようにすれば，そのパラメータで確定させる，となる
+
+	"param":		[{
+						"n_neighbors":		[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+						"weights":			["uniform", "distance"],
+						"leaf_size":		[10, 20, 30, 40, 50]
+					}]
+
+### 学習用データ（Train Data）の書式
+
+- 原則として，`iris.csv`に準拠する
+	- csv，もしくはtsv形式のみ読み込み可能
+	- 縦方向に各サンプル，横方向に次元
+	- 一番右側の列は教師ラベル
+	- 例：irisなら縦150行，横5列
+- 1行目がHeaderの時は，**Header of Train Data**にチェックを入れる
+
+### 学習用データの正規化
+- **Choose Train Data**で読み込んだ学習用データを正規化する: **NORMALIZE**で実行する
+	- **z-score**：平均が1，標準偏差が1になるように正規化（default）
+	- **Min-Max**: 最小値が0，最大値が1になるように正規化
+- 全て，各次元（列）内で計算する
+- 正規化後は，
+	- 学習用データの末尾に「_norm」が追加されたデータが，元の学習用データと同じディレクトリに生成される
+		- `iris.csv`なら`iris_norm.csv`
+	- 自動的に学習用データの参照を正規化後のデータに差し替える

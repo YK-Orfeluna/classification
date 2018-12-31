@@ -3,6 +3,7 @@
 	"K":			50,
 	"evaluation":	"CV",
 	"param":		{
-						"n_estimators":		[100000]
+						"n_estimators":		[10, 50, 100],
+						"criterion":		["gini", "entropy"]
 					}
 }

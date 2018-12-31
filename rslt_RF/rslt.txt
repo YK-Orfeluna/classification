@@ -1,0 +1,4 @@
+best parameter:
+{'criterion': 'gini', 'n_estimators': 10}
+best test accuracy: 	0.96
+SD of test accuracy:	0.10832051206181283
